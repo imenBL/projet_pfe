@@ -46,6 +46,7 @@ Thumbs.db
 build/
 dist/
 *.egg-info/
+gdelt-key.json
 
 # =========================
 # Pytest / mypy
