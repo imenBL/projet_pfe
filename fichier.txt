@@ -1,0 +1,30 @@
+Structure : 
+project_PFE/ 
+│ ├── main.py (orchestration) 
+├── scrapers 
+     ├── gold_scraper.py 
+     └── silver_scraper.py 
+├── database.py 
+├── cleaner.py 
+└── project 
+    ├── Include 
+    ├── Lib  
+    ├── Scripts 
+    ├── .gitignore 
+    └── .pyvenv.cfg
+
+
+
+--> Run main.py via terminal : .\projet\Scripts\python.exe main.py
+
+
+REQUIREMENTS:
+pandas
+sqlalchemy
+psycopg2-binary
+openpyxl
+yfinance
+matplotlib
+beautifulsoup
+seaborn
+scipy
