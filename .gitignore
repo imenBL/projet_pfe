@@ -43,7 +43,7 @@ Thumbs.db
 # =========================
 # Build / cache
 # =========================
-build/
+build/  
 dist/
 *.egg-info/
 gdelt-key.json
