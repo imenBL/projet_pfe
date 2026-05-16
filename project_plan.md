@@ -1,0 +1,272 @@
+
+PROJECT DESCRIPTION
+================================================================================
+
+Title:
+    Gold Price Prediction for the United States Using Machine Learning
+    and Time Series Forecasting
+
+Summary:
+    This project is a final-year academic project (Projet de Fin d'Études — PFE)
+    that aims to predict gold 24K prices for the United States by combining:
+
+        - Historical gold 24K price data (USA, 2017–Today)
+        - Macroeconomic indicators : Fed Rate, Real Rate, CPI, GDP, DXY,
+          Unemployment (FRED API, monthly → forward-filled to daily)
+        - Market indicators        : VIX (Volatility Index), Crude Oil Price
+          (Yahoo Finance, daily)
+        - Geopolitical signals     : Total Events, Political Events,
+          War Intensity, Crisis Index, Political Pressure
+          (GDELT, daily, filtered on USA)
+        - Gold Reserves            : USA annual gold reserves (World Bank,
+          annual → forward-filled to daily)
+        - Time-series features     : Lags, Moving Averages, Rolling Volatility
+          (engineered from the gold price series itself)
+
+    Scope:
+        - Country   : United States (USA)
+        - Metal     : Gold only
+        - Karat     : 24K only (gold_24k) — all other karats excluded
+        - Currency  : USD
+        - Period    : 2017-01-01 → Today
+          
+ Note : 
+ Two prediction stages are defined: (Now we will Only Focus on Stage 1)
+ - Stage 1 : USA, Gold 24K, full feature set (macro + geopolitical + market) 
+ - Stage 2 : All other countries, Gold 24K, historical prices only
+
+================================================================================
+DATA SOURCES
+================================================================================
+
+    Source              Table                   Grain       Coverage
+    ──────────────────────────────────────────────────────────────────────────
+    Web Scrapers        cleaned_prices          Daily       12 countries (*)
+    GDELT API           geopolitical_data       Daily       All countries (*)
+    FRED API            macroeconomic_data      Monthly     USA only
+    Yahoo Finance       vix_oil_data            Daily       USA only
+    World Bank          reserves_gold           Annual      All countries (*)
+    Internal            dim_date                Daily       2016 – Today
+    ──────────────────────────────────────────────────────────────────────────
+    (*) Tables are centralized for all countries but filtered to USA
+        during the feature dataset build step.
+
+    Note:
+        - Only gold_24k is retained as the target variable (y).
+        - Columns gold_22k, gold_21k, gold_18k, gold_14k, gold_10k
+          and silver_price are excluded from the modeling pipeline.
+
+================================================================================
+DATABASE SCHEMA — metals_db (PostgreSQL)
+================================================================================
+
+    [Source of Truth — Centralized Tables]
+
+    public.cleaned_prices       → Daily gold_24k price per country
+    public.geopolitical_data    → Daily geopolitical indicators per country
+    public.macroeconomic_data   → Monthly macro indicators, USA only
+    public.vix_oil_data         → Daily VIX + Crude Oil, USA only
+    public.reserves_gold        → Annual gold reserves per country
+    public.dim_date             → Date dimension (year, month, day, quarter)
+
+    [ML Feature Dataset — Schema: ml]
+
+    ml.us_gold_features_daily   → Stage 1 ready-to-train dataset
+                                  One row = one day (USA)
+                                  Target column = y (gold_24k in USD)
+
+================================================================================
+FEATURE ENGINEERING — DEFINITIONS
+================================================================================
+
+    Notation:
+        y_t = gold_24k price on day t (USD)
+
+    ─── Lag Features ────────────────────────────────────────────────────────
+        y_lag_1     = y(t-1)    → Yesterday's price
+        y_lag_7     = y(t-7)    → Price 7 days ago  (weekly memory)
+        y_lag_30    = y(t-30)   → Price 30 days ago (monthly memory)
+
+        Purpose : Give the model explicit memory of past price levels.
+                  Captures short-term momentum and medium-term trend direction.
+
+    ─── Moving Average Features ─────────────────────────────────────────────
+        y_ma_7      = mean(y[t-6  : t])    → 7-day rolling average
+        y_ma_30     = mean(y[t-29 : t])    → 30-day rolling average
+
+        Purpose : Smooth noise, expose local trend level.
+                  (y_t - y_ma_30) = deviation from monthly trend.
+                  (y_ma_7 > y_ma_30) = short-term bullish momentum signal.
+
+    ─── Rolling Volatility ──────────────────────────────────────────────────
+        y_vol_30    = std( ln(y_t/y_{t-1}) ) over last 30 days
+
+        Purpose : Measure market turbulence over the past month.
+                  High volatility → uncertain regime (crises, macro shocks).
+                  Low  volatility → stable, more predictable period.
+
+    ─── Exogenous Features ──────────────────────────────────────────────────
+        Macro        : fed_rate, real_rate, cpi, gdp, dxy, unemployment
+                       (monthly, forward-filled to daily)
+        Market       : vix, oil_price
+                       (daily)
+        Geopolitical : total_events, political_events, war_intensity,
+                       crisis_index, political_pressure
+                       (daily, USA)
+        Reserves     : gold_reserves
+                       (annual, forward-filled to daily)
+
+    ─── Calendar Features ───────────────────────────────────────────────────
+        month, quarter, day_of_week, is_month_end
+
+================================================================================
+PROJECT GOALS
+================================================================================
+
+    Primary Goal:
+        Build a robust forecasting model to predict gold_24k daily prices
+        for the United States, leveraging both historical price dynamics
+        and a rich set of macroeconomic, market, and geopolitical features.
+
+    Secondary Goals:
+        1. Identify the most influential features driving gold prices
+           (feature importance via SHAP values).
+        2. Compare multiple forecasting approaches (ARIMA baseline,
+           XGBoost/LightGBM, LSTM, Temporal Fusion Transformer).
+        3. Ensure the full pipeline is reproducible, versioned, and
+           extensible for future stages or additional features.
+
+================================================================================
+PROJECT PLAN — PHASES & MILESTONES
+================================================================================
+
+    CRISP-DM ORDERING (canonical, non-negotiable):
+        Phase 0 → Phase 1 (EDA) → Phase 2 (Data Prep) → Phase 3 (Modeling)
+                                                      → Phase 4 (Reporting)
+
+    Phase 1 (EDA) MUST complete before Phase 2 (Data Preparation) begins.
+    No pragmatic shortcuts. The EDA report (trend, correlation, stationarity,
+    decomposition, geopolitical-spike analysis, imputation strategy) is an
+    input to Phase 2 — not a parallel or follow-up task.
+
+    ┌─────────────────────────────────────────────────────────────────────────┐
+    │  PHASE 0 — Data Infrastructure                                  [DONE] │
+    │                                                                         │
+    │  [x] Web scraping — gold prices (12 countries, 2017–today)             │
+    │  [x] GDELT data collection (geopolitical signals)                       │
+    │  [x] FRED API data collection (macro indicators, USA)                   │
+    │  [x] Yahoo Finance (VIX + Oil)                                          │
+    │  [x] World Bank (gold reserves)                                         │
+    │  [x] PostgreSQL database setup (metals_db)                              │
+    │  [x] Raw data cleaning and insertion into cleaned_prices                │
+    └─────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────────────────────────────────────┐
+    │  PHASE 1 — Exploratory Data Analysis (EDA)              [ TODO — NEXT ]│
+    │                                                                         │
+    │  [ ] Gold 24K price trend visualization (USA, 2017–today)               │
+    │  [ ] Correlation matrix : gold_24k vs all exogenous features            │
+    │  [ ] Stationarity tests : ADF / KPSS on gold_24k series                 │
+    │  [ ] Trend + seasonality decomposition (STL)                            │
+    │  [ ] Geopolitical event spikes vs gold price movements                  │
+    │  [ ] Missing values analysis and imputation strategy                    │
+    │                                                                         │
+    │  Gate: Phase 1 acceptance criteria (see refactor/02-data-               │
+    │  understanding.md) must be met before Phase 2 starts.                   │
+    └─────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────────────────────────────────────┐
+    │  PHASE 2 — Data Preparation & Feature Engineering  [ TODO — GATED ]    │
+    │  Gated on PHASE 1 completion. Do not start until the EDA report and    │
+    │  imputation strategy are produced.                                      │
+    │                                                                         │
+    │  [ ] Keep only gold_24k — drop other karats and silver_price            │
+    │  [ ] Standardize country_code (ISO3) across all tables                  │
+    │  [ ] Fix date column types (TEXT → DATE) in cleaned_prices              │
+    │  [ ] Build ml.us_gold_features_daily :                                  │
+    │        - Filter : country_code = 'USA', metals = 'gold'                 │
+    │        - Join   : macroeconomic_data (forward-fill monthly → daily)     │
+    │        - Join   : vix_oil_data (daily)                                  │
+    │        - Join   : geopolitical_data (country = 'USA', daily)            │
+    │        - Join   : reserves_gold (forward-fill annual → daily)           │
+    │        - Compute: y_lag_1, y_lag_7, y_lag_30                           │
+    │        - Compute: y_ma_7, y_ma_30                                       │
+    │        - Compute: y_vol_30 (rolling std of log-returns)                 │
+    │        - Add   : calendar features from dim_date                        │
+    └─────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────────────────────────────────────┐
+    │  PHASE 3 — Modeling                                             [ TODO ]│
+    │                                                                         │
+    │  [ ] Chronological train / validation / test split (70 / 15 / 15 %)    │
+    │  [ ] Baseline         : ARIMA / SARIMA (univariate)                     │
+    │  [ ] ML model         : XGBoost / LightGBM (full feature set)           │
+    │  [ ] Deep Learning    : LSTM                                             │
+    │  [ ] Advanced DL      : Temporal Fusion Transformer (TFT)               │
+    │  [ ] Evaluation       : MAE, RMSE, MAPE, R²                            │
+    │  [ ] Interpretability : SHAP feature importance                         │
+    │  [ ] Best model selection                                               │
+    └─────────────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────────────────────────────────────┐
+    │  PHASE 4 — Results & Reporting                                  [ TODO ]│
+    │                                                                         │
+    │  [ ] Model comparison table (metrics per model)                         │
+    │  [ ] Visualization : predicted vs actual gold_24k prices                │
+    │  [ ] SHAP plots : top features driving predictions                      │
+    │  [ ] PFE report writing (methodology, results, conclusions)             │
+    │  [ ] Optional : REST API / dashboard to serve predictions               │
+    └─────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+PROJECT CONFIGURATION — Constants
+================================================================================
+"""
+
+# ─── Scope ────────────────────────────────────────────────────────────────────
+TARGET_METAL      = "gold"
+TARGET_KARAT      = "gold_24k"         # Only column kept as target (y)
+TARGET_CURRENCY   = "USD"
+DATE_START        = "2017-01-01"
+DATE_END          = "Current_date"               # Today (dynamic)
+
+# ─── Country ──────────────────────────────────────────────────────────────────
+COUNTRY           = "USA"
+
+# ─── Feature Windows ─────────────────────────────────────────────────────────
+LAG_WINDOWS       = [1, 7, 30]         # Days
+MA_WINDOWS        = [7, 30]            # Days
+VOL_WINDOW        = 30                 # Days (rolling std of log-returns)
+
+# ─── Exogenous Features ───────────────────────────────────────────────────────
+MACRO_FEATURES    = ["fed_rate", "real_rate", "cpi", "gdp", "dxy", "unemployment"]
+MARKET_FEATURES   = ["vix", "oil_price"]
+GEO_FEATURES      = ["total_events", "political_events", "war_intensity",
+                      "crisis_index", "political_pressure"]
+RESERVE_FEATURE   = ["gold_reserves"]
+
+ALL_EXOG_FEATURES = MACRO_FEATURES + MARKET_FEATURES + GEO_FEATURES + RESERVE_FEATURE
+
+# ─── Calendar Features ────────────────────────────────────────────────────────
+CALENDAR_FEATURES = ["month", "quarter", "day_of_week", "is_month_end"]
+
+# ─── ML Dataset ───────────────────────────────────────────────────────────────
+ML_SCHEMA         = "ml"
+STAGE1_DATASET    = f"{ML_SCHEMA}.us_gold_features_daily"
+
+# ─── Train / Validation / Test Split (chronological) ─────────────────────────
+TRAIN_RATIO       = 0.70
+VAL_RATIO         = 0.15
+TEST_RATIO        = 0.15
+
+# ─── Evaluation Metrics ───────────────────────────────────────────────────────
+EVAL_METRICS      = ["MAE", "RMSE", "MAPE", "R2"]
+
+# ─── Database ─────────────────────────────────────────────────────────────────
+DB_NAME           = "metals_db"
+DB_SCHEMA_SOURCE  = "public"           # Centralized source-of-truth tables
+DB_SCHEMA_ML      = "ml"              # Feature datasets for modeling
+
+
+
+RQ :  Propre et focalisé exclusivement sur l'Étape 1.
