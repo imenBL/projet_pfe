@@ -1,16 +1,13 @@
 import logging
 import pandas as pd
+from data_collection.Gold_scraper import scrape_gold
+from data_collection.Silver_scraper import scrape_silver
+from data_cleaning.merge_metals import merge_gold_silver
+from db_settings import init_database, insert_raw_data , insert_gdelt_data, insert_yfinance_data , insert_excel, insert_Fred_Api_data
+from data_collection.Gdelt_Project import fetch_geopolitical_indices
+from data_collection.yahoo_finance import fetch_vix_oil
+from data_collection.fredAPI import import_Fred
 
-
-
-from Collector.Gold_scraper import scrape_gold
-from Collector.Silver_scraper import scrape_silver
-from Collector.World_Bank_API import build_multi_country_dataset
-from database import init_database, insert_raw_data , insert_cleaned_data, insert_gdelt_data, insert_yfinance_data, insert_date , insert_excel, insert_Fred_Api_data
-from cleaner_prices import clean_data
-from Collector.Gdelt_Project import fetch_geopolitical_indices
-from Collector.yahoo_finance import fetch_vix_oil
-from Collector.fredAPI import import_Fred
 
 
 def setup_logger():
@@ -41,55 +38,44 @@ def main():
 
     logger.info("Lancement de Pipeline")
 
-    # DB
-    # init_database()
-
-    insert_date(start="2016-01-01")
-    logger.info("Table Dim_Date inserted")
+    #DB
+    init_database()
 
 
-    # # Scraping
-    # logger.info("Lancement Scraping Gold")
-    # gold_df = scrape_gold()
-    # logger.info("Scraping gold done")
+    # Scraping
+    logger.info("Lancement Scraping Gold")
+    gold_df = scrape_gold()
+    logger.info("Scraping gold done")
 
-    # logger.info("Lancement Scraping Silver")
-    # silver_df = scrape_silver()
-    # logger.info("Scraping silver done")
+    logger.info("Lancement Scraping Silver")
+    silver_df = scrape_silver()
+    logger.info("Scraping silver done")
 
-    # raw_df = pd.concat([gold_df, silver_df], ignore_index=True)
+    prices_df = merge_gold_silver(gold_df, silver_df)
 
-    # insert_raw_data(raw_df)
-    # logger.info("raw_data inserted")
+    insert_raw_data(prices_df)
+    logger.info("gold and silver raw data inserted")
 
-    # # Merge 
+   
+    # Insert DB
 
-    # cleaned_df = clean_data(raw_df)
-    # logger.info("Data clean  !")
+    gdelt_df = fetch_geopolitical_indices()
+    logger.info("Gdelt Data collected" , len(gdelt_df))
 
-    # # Insert DB
+    insert_gdelt_data(gdelt_df)
+    logger.info("Gdelt_data inserted")
 
-    
-    # insert_cleaned_data(cleaned_df)
-    # logger.info("cleaned_data inserted")
+    yfinance_df = fetch_vix_oil()
 
-    # gdelt_df = fetch_geopolitical_indices()
-    # logger.info("Gdelt Data collected" , len(gdelt_df))
+    insert_yfinance_data(yfinance_df)
+    logger.info("Yahoo Finance data inserted" , len(yfinance_df))
 
-    # insert_gdelt_data(gdelt_df)
-    # logger.info("Gdelt_data inserted")
+    insert_excel(file_path= r"C:\Users\ibenl\OneDrive\Bureau\Projet PFE\Reserves_Gold.xlsx")
+    logger.info("Excel data inserted")
 
-    # yfinance_df = fetch_vix_oil()
-
-    # insert_yfinance_data(yfinance_df)
-    # logger.info("Yahoo Finance data inserted" , len(yfinance_df))
-
-    # insert_excel(file_path= r"C:\Users\ibenl\OneDrive\Bureau\Projet PFE\Reserves_Gold.xlsx")
-    # logger.info("Excel data inserted")
-
-    # Fred_df = import_Fred()
-    # insert_Fred_Api_data(Fred_df)
-    # logger.info("Fred_API data inserted")
+    Fred_df = import_Fred()
+    insert_Fred_Api_data(Fred_df)
+    logger.info("Fred_API data inserted")
 
 
 

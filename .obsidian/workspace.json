@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "refactor/02-data-understanding.md",
+                "file": "interpretation/01_eda_phase1.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "02-data-understanding"
+              "title": "01_eda_phase1"
             }
           }
         ]
@@ -94,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "refactor/02-data-understanding.md",
+                "file": "interpretation/01_eda_phase1.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Rétrolien pour 02-data-understanding"
+              "title": "Rétrolien pour 01_eda_phase1"
             }
           },
           {
@@ -113,12 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "refactor/02-data-understanding.md",
+                "file": "interpretation/01_eda_phase1.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Liens sortants de 02-data-understanding"
+              "title": "Liens sortants de 01_eda_phase1"
             }
           },
           {
@@ -156,13 +156,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "refactor/02-data-understanding.md",
+                "file": "interpretation/01_eda_phase1.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Plan de 02-data-understanding"
+              "title": "Plan de 01_eda_phase1"
             }
           }
         ]
@@ -183,26 +183,29 @@
       "bases:Créer une nouvelle base": false
     }
   },
-  "active": "141c195ec420e026",
+  "active": "78af4f09a5496d7d",
   "lastOpenFiles": [
-    "refactor/01-business-understanding.md",
+    "notebooks/01_eda_phase1_copieeee.ipynb",
+    "notebooks/01_eda_phase1.ipynb",
+    "projet/Scripts/tqdm.exe",
+    "projet/Lib/site-packages/tqdm-4.67.3.dist-info/licenses/LICENCE",
+    "projet/Lib/site-packages/tqdm-4.67.3.dist-info/WHEEL",
+    "projet/Lib/site-packages/tqdm-4.67.3.dist-info/top_level.txt",
+    "projet/Lib/site-packages/tqdm-4.67.3.dist-info/REQUESTED",
+    "projet/Lib/site-packages/tqdm-4.67.3.dist-info/RECORD",
+    "projet/Lib/site-packages/tqdm-4.67.3.dist-info/METADATA",
+    "projet/Lib/site-packages/tqdm-4.67.3.dist-info/licenses",
+    "projet/Lib/site-packages/tqdm-4.67.3.dist-info/INSTALLER",
     "refactor/02-data-understanding.md",
-    "refactor/03-data-preparation.md.tmp.23348.42005676bbf8",
-    "refactor/03-data-preparation.md.tmp.23348.6f85b6fa14f7",
-    "refactor/02-data-understanding.md.tmp.23348.b00c904135a8",
-    "refactor/02-data-understanding.md.tmp.23348.13233b074da2",
-    "refactor/README.md.tmp.23348.4a0f7efb99ad",
-    "CLAUDE.md.tmp.23348.6b70d3fbe151",
-    "project_plan.md.tmp.23348.4c919d0c7ed7",
-    "project_plan.md.tmp.23348.1f3ee9eb94c0",
+    "interpretation/01_eda_phase1.md",
+    "reports/phase1-eda/SUMMARY.md",
+    "refactor/01-business-understanding.md",
     "refactor/03-data-preparation.md",
     "refactor/README.md",
     "refactor/06-deployment.md",
     "refactor/05-evaluation.md",
     "refactor/04-modeling.md",
     "project_plan.md",
-    "CLAUDE.md.tmp.23348.27aa5f8f14b6",
-    "refactor/06-deployment.md.tmp.23348.6cdd5740a4ef",
     "CLAUDE.md"
   ]
 }

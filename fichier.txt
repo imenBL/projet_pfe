@@ -28,3 +28,4 @@ matplotlib
 beautifulsoup
 seaborn
 scipy
+statsmodels

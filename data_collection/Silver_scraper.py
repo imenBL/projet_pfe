@@ -21,10 +21,10 @@ HEADERS = {
 def scrape_silver():
     all_data = []
 
-    for p in PAYS:
+    for c in PAYS:
 
         for y in YEARS:
-            url = BASE_URL.format(p, y)
+            url = BASE_URL.format(c, y)
 
             try:
                 response = requests.get(url, headers=HEADERS, timeout=10)
@@ -53,14 +53,9 @@ def scrape_silver():
 
                     all_data.append({
                         "metals" : "silver",
-                        "Pays": p,
-                        "Année": y,
+                        "country": c,
+                        "year": y,
                         "date": date,
-                        "gold_24k": None,
-                        "gold_22k": None,
-                        "gold_18k": None,
-                        "gold_14k": None,
-                        "gold_10k": None,
                         "silver_price": price
                     })
 

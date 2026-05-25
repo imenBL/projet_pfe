@@ -22,9 +22,9 @@ HEADERS = {
 def scrape_gold():
     all_data = []
 
-    for p in Pays:
+    for c in Pays:
         for y in Years:
-            url = Site.format(p, y)
+            url = Site.format(c, y)
             try:
                 response = requests.get(url, headers=HEADERS, timeout=10)
                 response.raise_for_status()
@@ -35,7 +35,7 @@ def scrape_gold():
             table = soup.find("table", class_="metal-history-table wide-table")
 
             if not table:
-                print(f"Table non trouvée ({p}-{y})")
+                print(f"Table non trouvée ({c}-{y})")
                 continue
 
             rows = table.find_all("tr")
@@ -54,15 +54,14 @@ def scrape_gold():
 
                     all_data.append({
                         "metals": "gold",
-                        "Pays": p,
-                        "Année": y,
+                        "country": c,
+                        "year": y,
                         "date": date,
                         "gold_24k": prices[0],
                         "gold_22k": prices[1],
                         "gold_18k": prices[2],
                         "gold_14k": prices[3],
                         "gold_10k": prices[4],
-                        "silver_price" : None
                     })
 
             # éviter de surcharger le site

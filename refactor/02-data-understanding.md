@@ -1,8 +1,9 @@
 # Phase 2 — Data Understanding
 
-> Status: Collection DONE — **EDA TODO (NEXT PHASE)**
+> Status: Collection DONE — EDA **IN PROGRESS** (notebook + report scaffold ready; user fills verdicts after running it)
 > Maps to project_plan.md: PHASE 0 (Data Infrastructure) + PHASE 1 (EDA)
 > CRISP-DM rule: this phase must reach DONE before Phase 3 (Data Preparation) starts. No pragmatic shortcuts.
+> Deliverables: notebook `notebooks/01_eda_phase1.ipynb` and report `reports/phase1-eda/SUMMARY.md`.
 
 ## Goal
 Catalog every data source, confirm coverage and grain match the project scope, and characterize the `gold_24k` time series and its candidate predictors before building features.
@@ -55,3 +56,7 @@ Centralized tables hold all countries; **filtering to USA happens at the feature
 
 ## Open questions
 - Does GDELT have any USA-day gaps inside 2017→today that would require imputation?
+
+## EDA artifacts
+- Notebook: [`notebooks/01_eda_phase1.ipynb`](../notebooks/01_eda_phase1.ipynb) — visuals stay inline; run manually.
+- Report: [`reports/phase1-eda/SUMMARY.md`](../reports/phase1-eda/SUMMARY.md) — text-only verdicts and tables. User fills the placeholder sections after running the notebook, then ticks the acceptance-criteria boxes above and flips this Status header to **DONE**.
