@@ -12,7 +12,7 @@
 
 ## Trend (Task 1)
 
-The `gold_24k` USA series follows a strong upward trajectory over the study period, multiplied by approximately **4.1×** (from **36.98 $/g** in Jan 2017 to **151.43 $/g** as of the last recorded price). Three successive regimes are clearly identifiable:
+The `gold_24k` USA series follows a strong upward trajectory over the study period, multiplied by approximately **3.9×** (from **36.98 $/g** in Jan 2017 to **144.99 $/g** as of the last recorded price, 2026-05-22). Three successive regimes are clearly identifiable:
 
 1. **2017–2019 — low consolidation phase** (~37–45 $/g): narrow range, gradual Fed rate hikes.
 2. **2020–2022 — COVID shock + inflationary surge**: first upward breakout to 55–65 $/g, noticeably higher volatility.
@@ -39,9 +39,9 @@ STL decomposition (period = 365 calendar days) reveals a **dominant trend** and 
 
 | Component  | Std dev | Range                    | Approx. share of total variance |
 |------------|---------|--------------------------|----------------------------------|
-| `trend`    | 26.88   | 40.87 → 148.28 $/g       | ~96 %                            |
-| `seasonal` | 3.80    | −14.79 → +22.64 $/g      | ~2 %                             |
-| `residual` | 5.25    | (centred 0)              | ~2 %                             |
+| `trend`    | 27.55   | 40.87 → 151.17 $/g       | ~95 %                            |
+| `seasonal` | 3.45    | −13.39 → +22.20 $/g      | ~1.5 %                           |
+| `residual` | 5.23    | (centred 0)              | ~3.4 %                           |
 
 Seasonality exists but does not justify prioritising SARIMA over plain ARIMA on its own. **Recommendation:** use ARIMA(p,d,q) on log-returns as the baseline; test SARIMA(s=252 or s=365) only if ARIMA underperforms. The calendar features built in Phase 2 (`month`, `quarter`, `is_month_end`) will absorb whatever seasonality remains for tree-based and LSTM models.
 
@@ -51,53 +51,55 @@ Seasonality exists but does not justify prioritising SARIMA over plain ARIMA on 
 
 | Transform     | ADF stat | ADF p-value | ADF says         | KPSS stat | KPSS p-value | KPSS says        | Both agree stationary? |
 |---------------|----------|-------------|------------------|-----------|--------------|------------------|------------------------|
-| `level`       | +3.41    | 1.000       | non-stationary   | 6.04      | 0.010        | non-stationary   | ✅ No (consensus)      |
-| `first_diff`  | −13.01   | 2.5e-24     | stationary       | 0.71      | 0.013        | non-stationary   | ❌ Disagree            |
-| `log_returns` | −19.02   | ~0          | stationary       | 0.41      | 0.074        | stationary       | ✅ Yes (consensus)     |
+| `level`       | +2.70    | 0.999       | non-stationary   | 6.12      | 0.010        | non-stationary   | ✅ No (consensus)      |
+| `first_diff`  | −13.01   | 2.6e-24     | stationary       | 0.55      | 0.031        | non-stationary   | ❌ Disagree            |
+| `log_returns` | −12.41   | 4.3e-23     | stationary       | 0.33      | 0.100        | stationary       | ✅ Yes (consensus)     |
 
 **Interpretation:**
 - **Level:** both tests agree the raw series is non-stationary (strong upward trend).
-- **First difference:** ADF says stationary but KPSS still rejects — classic sign of residual heteroscedasticity (absolute daily differences grow 3–4× over the period as price rises from ~37 to ~150 $/g).
-- **Log-returns:** both tests agree on stationarity. The log transformation neutralises the exponential growth of absolute variance — canonical for multiplicative financial assets.
+- **First difference:** ADF rejects the unit root but KPSS still rejects stationarity (p = 0.031) — classic sign of residual heteroscedasticity (absolute daily differences grow 3–4× over the period as price rises from ~37 to ~145 $/g).
+- **Log-returns:** both tests agree on stationarity (ADF p ≈ 0; KPSS p = 0.100 > 0.05). The log transformation neutralises the exponential growth of absolute variance — canonical for multiplicative financial assets.
 
 **Chosen modelling target for ARIMA family: `log_returns`.**
 
 ## Correlations (Task 2)
 
+Computed on the warm-up-trimmed clean window (3 339 daily rows, 2017-04-01 → 2026-05-22), ranked by |Pearson r|:
+
 | Rank | Feature              | Pearson r | Spearman ρ | Notes                                              |
 |------|----------------------|-----------|------------|----------------------------------------------------|
-| 1    | `gdp`                | +0.82     | +0.92      | Co-trend — likely spurious on returns              |
-| 2    | `cpi`                | +0.80     | +0.94      | Co-trend — likely spurious on returns              |
+| 1    | `gdp`                | +0.83     | +0.92      | Co-trend — likely spurious on returns              |
+| 2    | `cpi`                | +0.81     | +0.94      | Co-trend — likely spurious on returns              |
 | 3    | `gold_reserves`      | +0.78     | +0.93      | Co-trend — likely spurious on returns              |
-| 4    | `dxy`                | +0.48     | +0.63      | Moderate; counter-intuitive sign (co-trend effect) |
-| 5    | `fed_rate`           | +0.46     | +0.49      | Moderate; counter-intuitive sign (co-trend effect) |
-| 6    | `real_rate`          | +0.44     | +0.48      | Moderate                                           |
+| 4    | `dxy`                | +0.46     | +0.62      | Moderate; counter-intuitive sign (co-trend effect) |
+| 5    | `fed_rate`           | +0.45     | +0.49      | Moderate; counter-intuitive sign (co-trend effect) |
+| 6    | `real_rate`          | +0.44     | +0.49      | Moderate                                           |
 | 7    | `total_events`       | −0.31     | −0.37      | Weak negative                                      |
-| 8    | `political_events`   | −0.27     | −0.34      | Weak negative                                      |
-| 9    | `political_pressure` | +0.19     | +0.18      | Very weak positive                                 |
-| 10   | `oil_price`          | +0.18     | +0.37      | Non-linear (Spearman >> Pearson)                   |
+| 8    | `political_events`   | −0.28     | −0.34      | Weak negative                                      |
+| 9    | `oil_price`          | +0.22     | +0.38      | Non-linear (Spearman >> Pearson)                   |
+| 10   | `political_pressure` | +0.19     | +0.18      | Very weak positive                                 |
 | 11   | `crisis_index`       | −0.12     | −0.12      | Near zero                                          |
 | 12   | `vix`                | +0.07     | +0.24      | Negligible linear / non-linear hidden              |
-| 13   | `war_intensity`      | +0.02     | +0.03      | **Non-significant** (p = 0.25)                     |
-| 14   | `unemployment`       | −0.01     | +0.19      | **Non-significant** linearly (p = 0.41)            |
+| 13   | `war_intensity`      | +0.03     | +0.03      | **Non-significant** (Pearson p = 0.14)             |
+| 14   | `unemployment`       | −0.02     | +0.19      | **Non-significant** linearly (Pearson p = 0.32)    |
 
 **Key observations:**
 - The top-3 correlations (`gdp`, `cpi`, `gold_reserves`) reflect **co-trending**, not direct causality. Their predictive value on returns remains to be confirmed in Phase 3.
 - `dxy`, `fed_rate`, `real_rate` are **positively** correlated with gold — counter-intuitive versus classical theory, but explained by the 2022–2026 period where Fed tightening and gold prices rose simultaneously.
-- The Pearson vs. Spearman gap for `oil_price`, `vix`, `gdp`, `cpi` signals **non-linear relationships** that tree-based models (XGBoost, LightGBM) will capture better than linear models.
+- The Pearson vs. Spearman gap for `oil_price` (+0.22 vs +0.38), `vix` (+0.07 vs +0.24) and `unemployment` (−0.02 vs +0.19) signals **non-linear relationships** that tree-based models (XGBoost, LightGBM) will capture better than linear models.
 
-**Predictors with |ρ| < 0.1:** `war_intensity`, `unemployment` — kept anyway because `project_plan.md` mandates `ALL_EXOG_FEATURES`; SHAP in Phase 3 is the final arbiter.
+**Statistically non-significant (Pearson p > 0.05):** `war_intensity` (p = 0.14) and `unemployment` (p = 0.32). Together with `vix`, these are the three predictors with |Pearson r| < 0.1. All are kept anyway because `project_plan.md` mandates `ALL_EXOG_FEATURES`; SHAP in Phase 3 is the final arbiter.
 
 ## Geopolitical signal (Task 5)
 
-- Spike-day threshold: top 1% of `crisis_index` (≥ 0.978) or `war_intensity` (≥ 0.102)
-- Spike-day count: **68 days** out of 3 311 clean-window days
-- Mean 7-day forward return after a spike: **+0.59%**
-- Baseline mean 7-day return (all days): **+0.31%**
-- Absolute difference: +0.28 pp (~90% relative uplift)
-- Mann-Whitney U one-sided p-value: **p = 0.1418** (U = 120 857)
+- Spike-day threshold: top 1% of `crisis_index` (≥ 0.975) or `war_intensity` (≥ 0.102)
+- Spike-day count: **68 days** out of 3 339 clean-window days
+- Mean 7-day forward return after a spike: **+0.55%** (median +0.63%)
+- Baseline mean 7-day return (all days): **+0.29%** (median +0.31%, n = 3 332)
+- Absolute difference: +0.26 pp (~90% relative uplift)
+- Mann-Whitney U one-sided p-value: **p = 0.1525** (U = 121 508)
 
-**Verdict:** The directional signal is consistent with gold’s safe-haven role, but **statistically non-significant** at the 5% threshold (p = 0.14, n = 68 spike days). The low power stems from the small spike count and high return variance — not necessarily from the absence of an effect. Geopolitical features are **retained** in the feature table; their predictive contribution will be arbitrated by SHAP in Phase 3. Tree-based models may capture conditional effects (e.g., spike in calm vs. stressed market regime) that the linear Mann-Whitney test cannot detect.
+**Verdict:** The directional signal is consistent with gold’s safe-haven role, but **statistically non-significant** at the 5% threshold (p = 0.15, n = 68 spike days). The low power stems from the small spike count and high return variance — not necessarily from the absence of an effect. Geopolitical features are **retained** in the feature table; their predictive contribution will be arbitrated by SHAP in Phase 3. Tree-based models may capture conditional effects (e.g., spike in calm vs. stressed market regime) that the linear Mann-Whitney test cannot detect.
 
 ## Missing-value strategy (Task 6) — locked
 
@@ -139,7 +141,7 @@ Surfaced by EDA; fixes belong to Phase 2 per `refactor/03-data-preparation.md`:
 4. `raw_prices.gold_24k` had **no zero-valued rows** in the EDA window (dropped 0 rows). Maintain the non-zero sanity check at feature-build time as a defensive guard.
 5. **`macro_data`:** mixed-case columns `"CPI"`, `"GDP"`, `"DXY"`, `"Unemployment"` — rename to lowercase at feature-build time. Also contained **duplicate rows** at EDA time (each FRED row appeared twice); deduplicate before feature-build. The notebook deduped in-memory by `drop_duplicates(subset='date')`.
 6. `vix_oil_data` live columns: `"Date"` (quoted, capital D) → `date`; `oil` → `oil_price`. Live DB still uses TIMESTAMP → target DATE (conversion pending).
-7. **`macro_data.gdp`** is **98.94% missing** on the daily calendar — confirms FRED `GDP` series is **quarterly**, not monthly. Verify in `data_collection/fredAPI.py`.
+7. **`macro_data.gdp`** is **98.95% missing** on the daily calendar (3 392 / 3 428 days) — confirms FRED `GDP` series is **quarterly**, not monthly. Verify in `data_collection/fredAPI.py`.
 8. **Calendar features:** `dim_date` has been removed. `day_of_week` and `is_month_end` are derived in pandas from the `date` column during Phase 2 feature-build.
 9. **Open question — trading-day calendar:** NYSE business days (~252/year) vs. every calendar day forward-filled (365/year)? Affects row count and the semantics of `y_lag_1`. **Must be locked before computing lag/MA/vol features in Phase 2.**
 
