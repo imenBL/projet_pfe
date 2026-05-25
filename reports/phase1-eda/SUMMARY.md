@@ -1,67 +1,107 @@
 # Phase 1 — EDA Summary (USA / gold 24K / USD / 2017 → today)
 
-> **Status:** Template — verdicts to be filled in by the user after running `notebooks/01_eda_phase1.ipynb`.
+> **Status:** ✅ DONE — all verdicts filled from `interpretation/01_eda_phase1.md` outputs.
 > For visuals, run `notebooks/01_eda_phase1.ipynb`.
 > Maps to: `refactor/02-data-understanding.md`, `project_plan.md` PHASE 1.
 
 ## Scope
 
 - Target: `gold_24k` for USA, in USD per gram.
-- Period analyzed: **2017-01-01 → today**.
-- Other karats (`gold_22k`, `gold_21k`, `gold_18k`, `gold_14k`, `gold_10k`) and `silver_price` excluded per `project_plan.md`.
+- Period analyzed: **2017-01-02 → 2026-04-24** (2 428 trading days).
+- Other karats (`gold_22k`, `gold_18k`, `gold_14k`, `gold_10k`) and `silver_price` excluded per `project_plan.md`.
 
 ## Trend (Task 1)
 
-_Fill after running notebook §1._ Describe the overall direction (e.g., upward with three regime shifts: 2020 COVID, 2022 inflation, 2024 election), the start/end price levels, the largest drawdown, and any outliers worth flagging.
+The `gold_24k` USA series follows a strong upward trajectory over the study period, multiplied by approximately **4.1×** (from **36.98 $/g** to **151.43 $/g**). Three successive regimes are clearly identifiable:
+
+1. **2017–2019 — low consolidation phase** (~37–45 $/g): narrow range, gradual Fed rate hikes.
+2. **2020–2022 — COVID shock + inflationary surge**: first upward breakout to 55–65 $/g, noticeably higher volatility.
+3. **2022–2026 — bull super-cycle**: gold successively breaks 70, 90, then 130+ $/g, consistent with the international spot dynamics (all-time high late 2024).
+
+**Outlier flagged:** the series maximum of **173.62 $/g** is implausible vs. the expected international spot (~90–95 $/g peak). Likely a one-off scraping error (decimal shift or unit mix). **Action for Phase 2:** add an upper-bound control or winsorization at the 99.5th percentile before building `ml.us_gold_features_daily`.
 
 ## Seasonality — STL decomposition (Task 4)
 
-_Fill after running notebook §4._ State the relative magnitudes of trend / seasonal / residual standard deviations. Indicate whether SARIMA's seasonal term is justified or if plain ARIMA (or ARIMA on log-returns) is sufficient.
+STL decomposition (period = 365 calendar days) reveals a **dominant trend** and a **modest seasonal component**:
+
+| Component  | Std dev | Range                    | Approx. share of total variance |
+|------------|---------|--------------------------|----------------------------------|
+| `trend`    | 26.88   | 40.87 → 148.28 $/g       | ~96 %                            |
+| `seasonal` | 3.80    | −14.79 → +22.64 $/g      | ~2 %                             |
+| `residual` | 5.25    | (centred 0)              | ~2 %                             |
+
+Seasonality exists but does not justify prioritising SARIMA over plain ARIMA on its own. **Recommendation:** use ARIMA(p,d,q) on log-returns as the baseline; test SARIMA(s=252 or s=365) only if ARIMA underperforms. The calendar features built in Phase 2 (`month`, `quarter`, `is_month_end`) will absorb whatever seasonality remains for tree-based and LSTM models.
+
+> **Note:** STL was run with period = 365 (calendar days). A re-run with period = 252 (NYSE business days) may be informative after the trading-calendar convention is locked in Phase 2.
 
 ## Stationarity verdict (Task 3)
 
-_Fill after running notebook §3 with the ADF / KPSS results._
+| Transform     | ADF stat | ADF p-value | ADF says         | KPSS stat | KPSS p-value | KPSS says        | Both agree stationary? |
+|---------------|----------|-------------|------------------|-----------|--------------|------------------|------------------------|
+| `level`       | +3.41    | 1.000       | non-stationary   | 6.04      | 0.010        | non-stationary   | ✅ No (consensus)      |
+| `first_diff`  | −13.01   | 2.5e-24     | stationary       | 0.71      | 0.013        | non-stationary   | ❌ Disagree            |
+| `log_returns` | −19.02   | ~0          | stationary       | 0.41      | 0.074        | stationary       | ✅ Yes (consensus)     |
 
-| Transform     | ADF says | KPSS says | Both agree stationary? |
-|---------------|----------|-----------|------------------------|
-| level         | ?        | ?         | ?                      |
-| first_diff    | ?        | ?         | ?                      |
-| log_returns   | ?        | ?         | ?                      |
+**Interpretation:**
+- **Level:** both tests agree the raw series is non-stationary (strong upward trend).
+- **First difference:** ADF says stationary but KPSS still rejects — classic sign of residual heteroscedasticity (absolute daily differences grow 3–4× over the period as price rises from ~37 to ~150 $/g).
+- **Log-returns:** both tests agree on stationarity. The log transformation neutralises the exponential growth of absolute variance — canonical for multiplicative financial assets.
 
-**Chosen modeling target for ARIMA family:** _(typically `log_returns`)_.
+**Chosen modelling target for ARIMA family: `log_returns`.**
 
 ## Correlations (Task 2)
 
-_Fill after running notebook §2 with the ranked Pearson/Spearman table._
+| Rank | Feature              | Pearson r | Spearman ρ | Notes                                              |
+|------|----------------------|-----------|------------|----------------------------------------------------|
+| 1    | `gdp`                | +0.82     | +0.92      | Co-trend — likely spurious on returns              |
+| 2    | `cpi`                | +0.80     | +0.94      | Co-trend — likely spurious on returns              |
+| 3    | `gold_reserves`      | +0.78     | +0.93      | Co-trend — likely spurious on returns              |
+| 4    | `dxy`                | +0.48     | +0.63      | Moderate; counter-intuitive sign (co-trend effect) |
+| 5    | `fed_rate`           | +0.46     | +0.49      | Moderate; counter-intuitive sign (co-trend effect) |
+| 6    | `real_rate`          | +0.44     | +0.48      | Moderate                                           |
+| 7    | `total_events`       | −0.31     | −0.37      | Weak negative                                      |
+| 8    | `political_events`   | −0.27     | −0.34      | Weak negative                                      |
+| 9    | `political_pressure` | +0.19     | +0.18      | Very weak positive                                 |
+| 10   | `oil_price`          | +0.18     | +0.37      | Non-linear (Spearman >> Pearson)                   |
+| 11   | `crisis_index`       | −0.12     | −0.12      | Near zero                                          |
+| 12   | `vix`                | +0.07     | +0.24      | Negligible linear / non-linear hidden              |
+| 13   | `war_intensity`      | +0.02     | +0.03      | **Non-significant** (p = 0.25)                     |
+| 14   | `unemployment`       | −0.01     | +0.19      | **Non-significant** linearly (p = 0.41)            |
 
-| Rank | Feature       | Pearson r | Spearman ρ | Notes                |
-|------|---------------|-----------|------------|----------------------|
-| 1    | _e.g._ `dxy`  | ?         | ?          | Strongly negative    |
-| 2    | ?             | ?         | ?          |                      |
-| 3    | ?             | ?         | ?          |                      |
-| ...  | ...           | ...       | ...        |                      |
+**Key observations:**
+- The top-3 correlations (`gdp`, `cpi`, `gold_reserves`) reflect **co-trending**, not direct causality. Their predictive value on returns remains to be confirmed in Phase 3.
+- `dxy`, `fed_rate`, `real_rate` are **positively** correlated with gold — counter-intuitive versus classical theory, but explained by the 2022–2026 period where Fed tightening and gold prices rose simultaneously.
+- The Pearson vs. Spearman gap for `oil_price`, `vix`, `gdp`, `cpi` signals **non-linear relationships** that tree-based models (XGBoost, LightGBM) will capture better than linear models.
 
-**Predictors with |ρ| < 0.1:** _(list — kept anyway because `project_plan.md` mandates `ALL_EXOG_FEATURES`)._
+**Predictors with |ρ| < 0.1:** `war_intensity`, `unemployment` — kept anyway because `project_plan.md` mandates `ALL_EXOG_FEATURES`; SHAP in Phase 3 is the final arbiter.
 
 ## Geopolitical signal (Task 5)
 
-_Fill after running notebook §5._
+- Spike-day threshold: top 1% of `crisis_index` (≥ 0.978) or `war_intensity` (≥ 0.102)
+- Spike-day count: **68 days** out of 3 311 clean-window days
+- Mean 7-day forward return after a spike: **+0.59%**
+- Baseline mean 7-day return (all days): **+0.31%**
+- Absolute difference: +0.28 pp (~90% relative uplift)
+- Mann-Whitney U one-sided p-value: **p = 0.1418** (U = 120 857)
 
-- Spike-day count (top 1% of `crisis_index` or `war_intensity`): **?**
-- Mean 7-day forward return after a spike: **?%**
-- Baseline mean 7-day return: **?%**
-- Mann-Whitney U one-sided p-value: **?** (rejects baseline ≥ post-spike if p < 0.05)
-- **Verdict:** _(do USA geopolitical spikes co-move with gold-price moves?)_
+**Verdict:** The directional signal is consistent with gold's safe-haven role, but **statistically non-significant** at the 5% threshold (p = 0.14, n = 68 spike days). The low power stems from the small spike count and high return variance — not necessarily from the absence of an effect. Geopolitical features are **retained** in the feature table; their predictive contribution will be arbitrated by SHAP in Phase 3. Tree-based models may capture conditional effects (e.g., spike in calm vs. stressed market regime) that the linear Mann-Whitney test cannot detect.
 
 ## Missing-value strategy (Task 6) — locked
 
-| Source                 | Native grain | Imputation rule (Phase 2)                                  |
-|------------------------|--------------|-------------------------------------------------------------|
-| `cleaned_prices`       | Daily (gaps) | **Forward-fill** weekend / holiday gaps                     |
-| `macroeconomic_data`   | Monthly      | **Forward-fill** month → daily                              |
-| `vix_oil_data`         | Daily (gaps) | **Forward-fill** weekend / holiday gaps                     |
-| `geopolitical_data`    | Daily        | Dense for USA; ffill any sporadic gaps if found             |
-| `reserves_gold`        | Annual       | **Forward-fill** year → daily                               |
+| Source            | Native grain                       | Imputation rule (Phase 2)                                     |
+|-------------------|------------------------------------|---------------------------------------------------------------|
+| `raw_prices`      | Daily (trading days only)          | **Forward-fill** weekend / holiday gaps (max gap = 3 days)    |
+| `macro_data`      | Monthly (quarterly for `gdp`)      | **Forward-fill** month/quarter → daily                        |
+| `vix_oil_data`    | Daily (trading days only)          | **Forward-fill** weekend / holiday gaps                       |
+| `geopo_data`      | Daily (complete, 0% missing)       | **No imputation needed** — GDELT coverage is fully dense      |
+| `reserves_gold`   | Annual                             | **Forward-fill** year → daily                                 |
+
+**Supporting numbers from EDA:**
+- `gold_24k` max consecutive gap: **3 days** (weekend + US holiday) — safe for forward-fill.
+- GDELT features: **0% missing** across all 5 columns over 9 years.
+- Macro features (FRED): 97–99% missing on a daily calendar — expected given monthly/quarterly publication cadence.
+- Market features (Yahoo): ~31% missing — expected (~252 trading days / 365 calendar days ≈ 69% coverage).
+- `gold_reserves` (World Bank): 14% missing — one value per year forward-filled over 365 days.
 
 These rules carry forward as the contract for Phase 2 feature-build.
 
@@ -74,24 +114,28 @@ Per `project_plan.md`, all 14 `ALL_EXOG_FEATURES` carry forward regardless of ED
 - **Geopolitical (GDELT, USA):** `total_events`, `political_events`, `war_intensity`, `crisis_index`, `political_pressure`
 - **Reserves (World Bank, USA):** `gold_reserves`
 
-Plus calendar features from `dim_date`: `month`, `quarter`, `day_of_week`, `is_month_end` (last two derived in Phase 2 since they aren't in the table).
+Calendar features (`month`, `quarter`, `day_of_week`, `is_month_end`) are **derived in pandas from the `date` column** at feature-build time (Phase 2) — `dim_date` has been removed from the pipeline.
 
 ## Phase 2 hand-off — column-name and data-quality findings
 
-Surfaced by EDA, fixes belong to Phase 2 per `refactor/03-data-preparation.md`:
+Surfaced by EDA; fixes belong to Phase 2 per `refactor/03-data-preparation.md`:
 
-1. `cleaned_prices` is actually **`cleaned_data`** in the live DB (insert-function name mismatch noted in CLAUDE.md "Known pitfalls").
-2. `cleaned_data.country` is actually **`"Pays"`** (French slug, mixed case requires quoting). Standardize to ISO3 `country_code` (`etats-unis` → `USA`, `tunisie` → `TUN`, etc.).
-3. `cleaned_data."Année"` (accented) — normalize.
-4. `cleaned_data.date` is **TEXT** → convert to `DATE`.
-5. `cleaned_data.devise` is **NULL for `etats-unis`** — non-blocker for Stage 1 (USA-only) but worth flagging.
-6. `cleaned_data.gold_24k` contains some **0-valued rows** that were filtered out in EDA; Phase 2 should add a non-zero / sanity-bound constraint at feature-build time.
-7. `geopolitical_data` is actually **`gdelt_data`** in the live DB.
-8. `"Macroeconomic_data"` (quoted, mixed-case columns `"CPI"`, `"GDP"`, `"DXY"`, `"Unemployment"`) — rename table and columns to match the DDL convention in `database.py`.
-9. `vix_oil_data."Date"` (quoted, capital D) → `date`. Column `oil` → `oil_price`.
-10. `dim_date` lacks `day_of_week` and `is_month_end` — derive in feature-build, not at the table level.
-11. **Open question — trading-day calendar:** NYSE business days, or every calendar day forward-filled? Affects row count and the meaning of `y_lag_1`. Lock this **before** computing lag/MA/vol features in Phase 2.
+1. **Table renames (live DB vs. docs):** `cleaned_data` → `raw_prices`, `gdelt_data` → `geopo_data`, `Macroeconomic_data` → `macro_data` — now aligned in all docs.
+2. `raw_prices.country` is currently **`"Pays"`** (French slug, mixed case requires quoting). Standardise to ISO3 `country_code` (`etats-unis` → `USA`, `tunisie` → `TUN`, etc.).
+3. `raw_prices."Année"` (accented) — normalise column name.
+4. `raw_prices.date` is **TIMESTAMP** in the live DB → target type is **DATE**; conversion pending (tracked as Phase 2 task).
+5. `raw_prices.devise` is **NULL for `etats-unis`** — non-blocker for Stage 1 (USA-only) but must be filled to `USD` at feature-build time.
+6. `raw_prices.gold_24k` had **no zero-valued rows** in the EDA window (dropped 0 rows). Maintain the non-zero sanity check at feature-build time as a defensive guard.
+7. **`macro_data` (formerly `"Macroeconomic_data"`):** mixed-case columns `"CPI"`, `"GDP"`, `"DXY"`, `"Unemployment"` — rename to lowercase at feature-build time. Also contains **2 463 exact duplicate rows** (each FRED row appears twice) — deduplicate before feature-build.
+8. `vix_oil_data."Date"` (quoted, capital D) → `date`; column `oil` → `oil_price`. Live DB still uses TIMESTAMP → target DATE (conversion pending).
+9. **`macro_data.gdp`** is **98.94% missing** on the daily calendar — confirms FRED `GDP` series is **quarterly**, not monthly. Verify in `data_collection/fredAPI.py`.
+10. **Calendar features:** `dim_date` has been removed. `day_of_week` and `is_month_end` are derived in pandas from the `date` column during Phase 2 feature-build.
+11. **Open question — trading-day calendar:** NYSE business days (~252/year) vs. every calendar day forward-filled (365/year)? Affects row count and the semantics of `y_lag_1`. **Must be locked before computing lag/MA/vol features in Phase 2.**
+
+> **Implementation status:** items 4 and 8 (TIMESTAMP → DATE conversion) and item 2 (ISO3 standardisation) are Phase 2 tasks. The live DB still holds TIMESTAMP types for `raw_prices`, `macro_data`, and `vix_oil_data`. `reserves_gold` does not yet have a `date` column (Phase 2 addition). These are documented as pending — not yet applied to the DB or code.
 
 ---
 
-_When all the "Fill after running notebook" sections above are completed, tick the 3 acceptance-criteria boxes in `refactor/02-data-understanding.md` and flip its Status header to **DONE**. Phase 2 (`refactor/03-data-preparation.md`) is then unblocked._
+_Phase 1 EDA is complete. To close Phase 1 formally:_
+_1. Tick the 3 acceptance-criteria boxes in `refactor/02-data-understanding.md` and flip its Status to **DONE**._
+_2. Phase 2 (`refactor/03-data-preparation.md`) is then unblocked — starting with the 11 data-quality items listed above._
