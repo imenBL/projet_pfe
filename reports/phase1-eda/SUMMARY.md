@@ -13,7 +13,6 @@
 =======
 - Period analyzed: **2017-01-01 → today**.
 - Other karats (`gold_22k`, `gold_18k`, `gold_14k`, `gold_10k`) and `silver_price` excluded per `project_plan.md` (`gold_21k` was dropped at source).
->>>>>>> Stashed changes
 
 ## Trend (Task 1)
 
@@ -116,7 +115,6 @@ Seasonality exists but does not justify prioritising SARIMA over plain ARIMA on 
 | `vix_oil_data`         | Daily (gaps) | **Forward-fill** weekend / holiday gaps                     |
 | `geopo_data`           | Daily        | Dense for USA; ffill any sporadic gaps if found             |
 | `reserves_gold`        | Annual       | **Forward-fill** year → daily                               |
->>>>>>> Stashed changes
 
 These rules carry forward as the contract for Phase 2 feature-build.
 
@@ -172,7 +170,7 @@ Plus calendar features **derived in pandas** from the `date` column: `month`, `q
 9. `raw_prices.gold_24k` contains some **0-valued rows** that were filtered out in EDA; add a non-zero / sanity-bound constraint at feature-build time.
 10. FRED macro rows were **duplicated** at EDA time (each row twice); verify `macro_data` is de-duplicated at the DB level before the join.
 11. **Open question — trading-day calendar:** NYSE business days, or every calendar day forward-filled? Affects row count and the meaning of `y_lag_1`. Lock this **before** computing lag/MA/vol features in Phase 2.
->>>>>>> Stashed changes
+
 
 ---
 
