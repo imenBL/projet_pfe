@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "interpretation/01_eda_phase1.md",
+                "file": "reports/phase1-eda/SUMMARY.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "01_eda_phase1"
+              "title": "SUMMARY"
             }
           }
         ]
@@ -183,8 +183,11 @@
       "bases:Créer une nouvelle base": false
     }
   },
-  "active": "78af4f09a5496d7d",
+  "active": "141c195ec420e026",
   "lastOpenFiles": [
+    "refactor/02-data-understanding.md",
+    "refactor/03-data-preparation.md",
+    "interpretation/01_eda_phase1.md",
     "notebooks/01_eda_phase1_copieeee.ipynb",
     "notebooks/01_eda_phase1.ipynb",
     "projet/Scripts/tqdm.exe",
@@ -195,12 +198,8 @@
     "projet/Lib/site-packages/tqdm-4.67.3.dist-info/RECORD",
     "projet/Lib/site-packages/tqdm-4.67.3.dist-info/METADATA",
     "projet/Lib/site-packages/tqdm-4.67.3.dist-info/licenses",
-    "projet/Lib/site-packages/tqdm-4.67.3.dist-info/INSTALLER",
-    "refactor/02-data-understanding.md",
-    "interpretation/01_eda_phase1.md",
     "reports/phase1-eda/SUMMARY.md",
     "refactor/01-business-understanding.md",
-    "refactor/03-data-preparation.md",
     "refactor/README.md",
     "refactor/06-deployment.md",
     "refactor/05-evaluation.md",

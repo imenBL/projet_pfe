@@ -11,7 +11,7 @@ Phase-level checklists live in `refactor/<NN>-<phase>.md` (CRISP-DM breakdown �
 The user has explicitly stated: *"Propre et focalisé exclusivement sur l'Étape 1"* — clean and focused exclusively on Stage 1. Anything that doesn't serve Stage 1 is out of scope.
 
 - **Target metal**: gold only. Not silver. `silver_price` is excluded from the modeling pipeline.
-- **Target karat**: `gold_24k` only. The columns `gold_22k`, `gold_21k`, `gold_18k`, `gold_14k`, `gold_10k` are explicitly excluded — drop them during feature-build, do not engineer features from them, do not include them in EDA correlations targeting `y`.
+- **Target karat**: `gold_24k` only. The columns `gold_22k`, `gold_18k`, `gold_14k`, `gold_10k` are explicitly excluded — drop them during feature-build, do not engineer features from them, do not include them in EDA correlations targeting `y`. (`gold_21k` was dropped at source and no longer exists in `raw_prices`.)
 - **Target country**: USA only. Source tables hold 12 countries; **filter to USA at the feature-build step**, do not delete other countries from source tables.
 - **Currency**: USD only.
 - **Period**: `2017-01-01` → today (`DATE_START = "2017-01-01"`, `DATE_END` = dynamic current date).
@@ -37,7 +37,7 @@ Constants: `LAG_WINDOWS = [1, 7, 30]`, `MA_WINDOWS = [7, 30]`, `VOL_WINDOW = 30`
 
 ### Exogenous (joined in from source tables)
 
-- **`MACRO_FEATURES`** (FRED, monthly → **forward-filled to daily**): `fed_rate`, `real_rate`, `cpi`, `gdp`, `dxy`, `unemployment`. Source FRED series IDs are in `Collector/fredAPI.py` (`FEDFUNDS`, `REAINTRATREARAT10Y`, `CPIAUCSL`, `GDP`, `DTWEXBGS`, `UNRATE`).
+- **`MACRO_FEATURES`** (FRED, monthly → **forward-filled to daily**): `fed_rate`, `real_rate`, `cpi`, `gdp`, `dxy`, `unemployment`. Source FRED series IDs are in `data_collection/fredAPI.py` (`FEDFUNDS`, `REAINTRATREARAT10Y`, `CPIAUCSL`, `GDP`, `DTWEXBGS`, `UNRATE`).
 - **`MARKET_FEATURES`** (Yahoo Finance, daily): `vix`, `oil_price` (tickers `^VIX` and `CL=F`).
 - **`GEO_FEATURES`** (GDELT, daily, **filter `country = 'USA'`**): `total_events`, `political_events`, `war_intensity`, `crisis_index`, `political_pressure`.
 - **`RESERVE_FEATURE`** (World Bank, annual → **forward-filled to daily**): `gold_reserves`.
@@ -46,7 +46,7 @@ Constants: `LAG_WINDOWS = [1, 7, 30]`, `MA_WINDOWS = [7, 30]`, `VOL_WINDOW = 30`
 
 ### Calendar
 
-`CALENDAR_FEATURES = ["month", "quarter", "day_of_week", "is_month_end"]` — pulled from `dim_date`.
+`CALENDAR_FEATURES = ["month", "quarter", "day_of_week", "is_month_end"]` — **derived in pandas** from the `date` column at feature-build time. (The `dim_date` table was removed from the pipeline.)
 
 ## Modeling rules (Phase 3, when reached)
 
@@ -78,65 +78,67 @@ When asked "what's next", the answer is **Phase 1 — EDA**. The verbatim checkl
 
 See `refactor/02-data-understanding.md` for the full Phase-1 contract (inputs, tasks, outputs, acceptance criteria).
 
-**Phase 2 (Data Preparation) is gated on Phase 1.** Only once the EDA report exists and Phase-1 acceptance criteria are met, Phase 2 builds `ml.us_gold_features_daily` per the checklist in `refactor/03-data-preparation.md` (drop non-24K karats and silver, ISO3 country codes, `TEXT → DATE`, join + forward-fill, compute lags / MAs / volatility, attach calendar features). Do not pre-start any of those tasks in parallel with Phase 1.
+**Phase 2 (Data Preparation) is gated on Phase 1.** Only once the EDA report exists and Phase-1 acceptance criteria are met, Phase 2 builds `ml.us_gold_features_daily` per the checklist in `refactor/03-data-preparation.md` (drop non-24K karats and silver, ISO3 country codes, `timestamp → DATE`, join + forward-fill, compute lags / MAs / volatility, derive calendar features in pandas). Do not pre-start the feature-table build in parallel with Phase 1. (The `timestamp → DATE` column conversion has already been started as a standalone schema fix.)
 
 ## Running the pipeline
 
-The repo ships a Python venv at `projet/` (gitignored). Use it directly — there is no `requirements.txt` or `pyproject.toml`; dependencies are listed informally in `fichier.txt` (pandas, sqlalchemy, psycopg2-binary, openpyxl, yfinance, beautifulsoup4, fredapi, google-cloud-bigquery, matplotlib, seaborn, scipy).
+The repo ships a Python venv at `projet/` (gitignored). Use it directly. Dependencies are pinned in `requirements.txt` at the repo root (and also listed informally in `fichier.txt`): pandas, numpy, scipy, sqlalchemy, psycopg2, openpyxl, yfinance, beautifulsoup4, requests, fredapi, google-cloud-bigquery, matplotlib, seaborn, statsmodels.
 
 ```powershell
 # Run the orchestrator (PowerShell)
 .\projet\Scripts\python.exe main.py
 ```
 
-`main.py` is the single entry point. **Most of it is commented out** by design — uncomment the relevant block to run a specific collector/cleaner stage. Only `insert_date(...)` runs by default. There are no tests, linters, or build steps configured.
+`main.py` is the single entry point and now runs the **full pipeline** end-to-end: it scrapes gold + silver, merges them (`data_cleaning/merge_metals.merge_gold_silver`), inserts the merged `raw_prices`, then collects and inserts GDELT, Yahoo Finance, World Bank reserves, and FRED. There are no tests, linters, or build steps configured.
 
 ## Database (`metals_db`, PostgreSQL)
 
-Hardcoded in `database.py`: `postgres` / `admin` on `localhost:5432`. Schemas defined by project_plan.md:
+Hardcoded in `db_settings.py`: `postgres` / `admin` on `localhost:5432`. Schemas defined by project_plan.md:
 
 - **`public`** (`DB_SCHEMA_SOURCE`) — source-of-truth tables, all countries:
-  `cleaned_prices` (daily prices, 12 countries) · `geopolitical_data` (daily, all countries) · `macroeconomic_data` (monthly, USA) · `vix_oil_data` (daily, USA) · `reserves_gold` (annual, all countries) · `dim_date` (2016 → today).
-- **`ml`** (`DB_SCHEMA_ML`) — `ml.us_gold_features_daily` is the Stage-1 training table (one row = one day, target column = `y`). **This table does not exist yet** — Phase 1 builds it.
+  `raw_prices` (daily gold **and** silver prices merged, 12 countries, `devise` populated per country) · `geopo_data` (daily, all countries) · `macro_data` (monthly, USA) · `vix_oil_data` (daily, USA) · `reserves_gold` (annual, all countries). The `dim_date` table was removed — calendar features are derived in pandas.
+- **`ml`** (`DB_SCHEMA_ML`) — `ml.us_gold_features_daily` is the Stage-1 training table (one row = one day, target column = `y`). **This table does not exist yet** — Phase 2 (Data Preparation) builds it.
 
-The DDL in `create_tables()` is **not idempotent** for most tables (no `IF NOT EXISTS` except `reserves_gold`) — calling it twice will error.
+The DDL in `db_settings.create_tables()` is **not idempotent** for most tables (no `IF NOT EXISTS` except `reserves_gold`) — calling it twice will error.
+
+**Implementation status (schema migration in progress).** The target schema uses `DATE` for every date column and adds a `date` column to `reserves_gold` for temporal alignment. Not yet fully realized in the live DB: `raw_prices`, `macro_data`, and `vix_oil_data` still store `timestamp` (the `timestamp → DATE` conversion is the first Data-Preparation fix, already started); `reserves_gold` still has no `date` column; `macro_data` columns are still mixed-case (`CPI/GDP/DXY/Unemployment`) and `vix_oil_data` still uses `"Date"` + `oil` (target: lowercase `date` + `oil_price`).
 
 ## Architecture
 
 The codebase is a **data-ingestion pipeline** feeding the warehouse. Modeling code does not exist yet.
 
 ```
-main.py                  # Orchestrator — calls collectors → cleaner → DB inserts
-database.py              # PostgreSQL connection (SQLAlchemy + psycopg2), DDL, insert_* helpers
-cleaner_prices.py        # Normalizes scraped prices (French month names, devise extraction, float parsing)
-Collector/               # One module per upstream data source (the canonical collectors)
-  Gold_scraper.py        #   exchange-rates.org HTML scrape (12 countries × 2017–2026)
-  Silver_scraper.py      #   same site, silver — NOT used in Stage 1
-  Gdelt_Project.py       #   GDELT events via BigQuery → daily geopolitical indices per country
-  fredAPI.py             #   FRED macro series
-  yahoo_finance.py       #   ^VIX and CL=F (crude oil) close prices
-  World_Bank_API.py      #   inflation / interest / FX — NOT the source for reserves_gold
-Gold/, Cleaning/         # LEGACY one-off scripts (per-country CSV scrapers/cleaners). Not on the pipeline path.
-Reserves_Gold.xlsx       # World Bank gold reserves — loaded via database.insert_excel(), NOT World_Bank_API.py
-EDA.ipynb, EDA1.ipynb,   # Exploratory notebooks
-test.ipynb
-project_plan.md          # SPEC — authoritative source for scope, schema, features, and phases
+main.py                       # Orchestrator — scrape → merge → DB inserts (full pipeline)
+db_settings.py                # PostgreSQL connection (SQLAlchemy + psycopg2), DDL, insert_* helpers
+data_cleaning/
+  merge_metals.py             # Cleans + merges gold & silver into raw_prices (FR month names, devise mapping, float parsing)
+data_collection/              # One module per upstream data source
+  Gold_scraper.py             #   exchange-rates.org HTML scrape (12 countries × 2017–2026)
+  Silver_scraper.py           #   same site, silver — merged into raw_prices but excluded from Stage-1 modeling
+  Gdelt_Project.py            #   GDELT events via BigQuery → daily geopolitical indices per country
+  fredAPI.py                  #   FRED macro series
+  yahoo_finance.py            #   ^VIX and CL=F (crude oil) close prices
+Reserves_Gold.xlsx            # World Bank gold reserves — loaded via db_settings.insert_excel()
+notebooks/                    # EDA notebooks (Phase-1 work) + cleaning.ipynb
+project_plan.md               # SPEC — authoritative source for scope, schema, features, and phases
 ```
 
 ### Data flow
 
-1. **Collect** — `Collector/*` returns DataFrames (no I/O beyond upstream API calls).
-2. **Clean** — `cleaner_prices.clean_data(df)` converts French dates (`janv.`, `févr.`, …) to `YYYY-MM-DD`, extracts ISO currency code into `devise`, and parses prices to float.
-3. **Insert** — `database.insert_*(df)` writes via `df.to_sql(..., if_exists="append")`. Schema is created by `init_database()` → `create_tables()`.
+1. **Collect** — `data_collection/*` returns DataFrames (no I/O beyond upstream API calls).
+2. **Clean + merge** — `data_cleaning/merge_metals.merge_gold_silver(gold_df, silver_df)` converts French dates (`janv.`, `févr.`, …) to datetime, maps each country to its `devise`, parses prices to float, and merges gold + silver into one `raw_prices` frame.
+3. **Insert** — `db_settings.insert_*(df)` writes via `df.to_sql(..., if_exists="append")`. Schema is created by `init_database()` → `create_tables()`.
 
 ### Known pitfalls in current code
 
-- `database.insert_raw_data` writes to table `raw_data`, but the DDL creates `raw_prices`. Same mismatch: `insert_cleaned_data` writes `cleaned_data` vs. table `cleaned_prices`; `cleaner_prices.load_raw_data` reads `raw_data`. project_plan.md names `cleaned_prices` as the source of truth — reconcile to that.
-- `cleaned_prices.date` is `TEXT`, not `DATE` — Phase 1 must fix.
-- `cleaned_prices.country` is the French slug — Phase 1 must standardize to ISO3.
-- GDELT credentials live in `gdelt-key.json` (gitignored). `Collector/Gdelt_Project.py` sets `GOOGLE_APPLICATION_CREDENTIALS` to an absolute Windows path — change it if running elsewhere.
-- The FRED API key is hardcoded in `Collector/fredAPI.py`. Don't rotate it in committed code; if exposed, regenerate via the FRED portal.
-- `Collector/World_Bank_API.py` pulls inflation / interest / FX — **not** gold reserves. Reserves come from `Reserves_Gold.xlsx` via `database.insert_excel()`.
+- `db_settings.insert_Fred_Api_data` writes to table **`macro_data`**, but `create_tables()` declares **`macroeconomic_data`** — the DDL table is never used; the live table is `macro_data`. Reconcile the name (Data-Preparation cleanup).
+- `db_settings.create_tables()` issues DDL on a connection that is **never committed** (SQLAlchemy 2.0 autobegin), so the declared types don't take effect — `to_sql(..., if_exists="append")` then (re)creates the tables with pandas-inferred types. That's why `raw_prices`/`macro_data`/`vix_oil_data` are `timestamp` despite the DDL saying `DATE`.
+- `raw_prices.date` is currently `timestamp`; target is `DATE` (conversion already started). `raw_prices.country` is still the French slug (`etats-unis`, …) — Data Preparation standardizes it to ISO3.
+- `macro_data` columns are mixed-case (`CPI/GDP/DXY/Unemployment`) and `vix_oil_data` uses `"Date"` + `oil`; the feature spec expects lowercase `cpi/gdp/dxy/unemployment` and `oil_price` — rename during Data Preparation.
+- The `dim_date` table is no longer built or present; calendar features are derived in pandas.
+- GDELT credentials live in `gdelt-key.json` (gitignored). `data_collection/Gdelt_Project.py` sets `GOOGLE_APPLICATION_CREDENTIALS` to an absolute Windows path — change it if running elsewhere.
+- The FRED API key is hardcoded in `data_collection/fredAPI.py`. Don't rotate it in committed code; if exposed, regenerate via the FRED portal.
+- Gold reserves come from `Reserves_Gold.xlsx` via `db_settings.insert_excel()` (there is no World Bank API collector in the new pipeline).
 
 
 ### Implementation rules

@@ -41,20 +41,21 @@ DATA SOURCES
 
     Source              Table                   Grain       Coverage
     ──────────────────────────────────────────────────────────────────────────
-    Web Scrapers        cleaned_prices          Daily       12 countries (*)
-    GDELT API           geopolitical_data       Daily       All countries (*)
-    FRED API            macroeconomic_data      Monthly     USA only
+    Web Scrapers        raw_prices              Daily       12 countries (*)
+    GDELT API           geopo_data              Daily       All countries (*)
+    FRED API            macro_data              Monthly     USA only
     Yahoo Finance       vix_oil_data            Daily       USA only
     World Bank          reserves_gold           Annual      All countries (*)
-    Internal            dim_date                Daily       2016 – Today
     ──────────────────────────────────────────────────────────────────────────
     (*) Tables are centralized for all countries but filtered to USA
         during the feature dataset build step.
 
     Note:
         - Only gold_24k is retained as the target variable (y).
-        - Columns gold_22k, gold_21k, gold_18k, gold_14k, gold_10k
-          and silver_price are excluded from the modeling pipeline.
+        - Columns gold_22k, gold_18k, gold_14k, gold_10k and silver_price
+          are excluded from the modeling pipeline. (gold_21k was dropped
+          at source; gold and silver now share the raw_prices table.)
+        - dim_date was removed; calendar features are derived in pandas.
 
 ================================================================================
 DATABASE SCHEMA — metals_db (PostgreSQL)
@@ -62,12 +63,12 @@ DATABASE SCHEMA — metals_db (PostgreSQL)
 
     [Source of Truth — Centralized Tables]
 
-    public.cleaned_prices       → Daily gold_24k price per country
-    public.geopolitical_data    → Daily geopolitical indicators per country
-    public.macroeconomic_data   → Monthly macro indicators, USA only
+    public.raw_prices           → Daily gold (+ silver) prices per country
+    public.geopo_data           → Daily geopolitical indicators per country
+    public.macro_data           → Monthly macro indicators, USA only
     public.vix_oil_data         → Daily VIX + Crude Oil, USA only
     public.reserves_gold        → Annual gold reserves per country
-    public.dim_date             → Date dimension (year, month, day, quarter)
+    (dim_date removed — calendar features are derived in pandas at build time)
 
     [ML Feature Dataset — Schema: ml]
 
@@ -158,7 +159,7 @@ PROJECT PLAN — PHASES & MILESTONES
     │  [x] Yahoo Finance (VIX + Oil)                                          │
     │  [x] World Bank (gold reserves)                                         │
     │  [x] PostgreSQL database setup (metals_db)                              │
-    │  [x] Raw data cleaning and insertion into cleaned_prices                │
+    │  [x] Gold + silver cleaned + merged into raw_prices                     │
     └─────────────────────────────────────────────────────────────────────────┘
 
     ┌─────────────────────────────────────────────────────────────────────────┐
@@ -182,17 +183,17 @@ PROJECT PLAN — PHASES & MILESTONES
     │                                                                         │
     │  [ ] Keep only gold_24k — drop other karats and silver_price            │
     │  [ ] Standardize country_code (ISO3) across all tables                  │
-    │  [ ] Fix date column types (TEXT → DATE) in cleaned_prices              │
+    │  [ ] Fix date types (timestamp → DATE) in raw_prices                    │
     │  [ ] Build ml.us_gold_features_daily :                                  │
-    │        - Filter : country_code = 'USA', metals = 'gold'                 │
-    │        - Join   : macroeconomic_data (forward-fill monthly → daily)     │
+    │        - Filter : country_code = 'USA' (gold_24k)                       │
+    │        - Join   : macro_data (forward-fill monthly → daily)             │
     │        - Join   : vix_oil_data (daily)                                  │
-    │        - Join   : geopolitical_data (country = 'USA', daily)            │
+    │        - Join   : geopo_data (country = 'USA', daily)                   │
     │        - Join   : reserves_gold (forward-fill annual → daily)           │
     │        - Compute: y_lag_1, y_lag_7, y_lag_30                           │
     │        - Compute: y_ma_7, y_ma_30                                       │
     │        - Compute: y_vol_30 (rolling std of log-returns)                 │
-    │        - Add   : calendar features from dim_date                        │
+    │        - Add   : calendar features (in pandas)                          │
     └─────────────────────────────────────────────────────────────────────────┘
 
     ┌─────────────────────────────────────────────────────────────────────────┐

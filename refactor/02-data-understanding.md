@@ -10,16 +10,17 @@ Catalog every data source, confirm coverage and grain match the project scope, a
 
 ## Data sources inventory
 
-| Source           | Table (`public.`)     | Grain   | Coverage              | Collector module                                |
+| Source           | Table (`public.`)     | Grain   | Coverage              | Module                                          |
 |------------------|-----------------------|---------|-----------------------|-------------------------------------------------|
-| Web scrapers     | `cleaned_prices`      | Daily   | 12 countries          | `Collector/Gold_scraper.py` (+ `cleaner_prices.py`) |
-| GDELT (BigQuery) | `geopolitical_data`   | Daily   | All countries         | `Collector/Gdelt_Project.py`                    |
-| FRED API         | `macroeconomic_data`  | Monthly | USA only              | `Collector/fredAPI.py`                          |
-| Yahoo Finance    | `vix_oil_data`        | Daily   | USA only (^VIX, CL=F) | `Collector/yahoo_finance.py`                    |
-| World Bank xlsx  | `reserves_gold`       | Annual  | All countries         | `database.insert_excel()` ← `Reserves_Gold.xlsx` |
-| Internal         | `dim_date`            | Daily   | 2016 → today          | `database.insert_date()`                        |
+| Web scrapers     | `raw_prices`          | Daily   | 12 countries          | `data_collection/Gold_scraper.py` + `Silver_scraper.py` (+ `data_cleaning/merge_metals.py`) |
+| GDELT (BigQuery) | `geopo_data`          | Daily   | All countries         | `data_collection/Gdelt_Project.py`              |
+| FRED API         | `macro_data`          | Monthly | USA only              | `data_collection/fredAPI.py`                    |
+| Yahoo Finance    | `vix_oil_data`        | Daily   | USA only (^VIX, CL=F) | `data_collection/yahoo_finance.py`              |
+| World Bank xlsx  | `reserves_gold`       | Annual  | All countries         | `db_settings.insert_excel()` ← `Reserves_Gold.xlsx` |
 
 Centralized tables hold all countries; **filtering to USA happens at the feature-build step (Phase 3)**, never by deleting rows from source tables.
+
+`raw_prices` merges gold and silver (gold karats + `silver_price`, with `devise` per country); `gold_21k` was dropped at source. The `dim_date` table was removed — calendar features are derived in pandas. **Target schema** (migration in progress — see `03-data-preparation.md`): `DATE` date columns everywhere, plus a new `date` column on `reserves_gold` for temporal alignment.
 
 ## Inputs (from Phase 1)
 - Scope contract: USA / gold 24K / USD / 2017→today / Stage 1 only.
@@ -27,12 +28,11 @@ Centralized tables hold all countries; **filtering to USA happens at the feature
 ## Tasks
 
 ### Collection (DONE — project_plan.md PHASE 0)
-- [x] Scrape gold prices (12 countries, 2017–today).
-- [x] Pull GDELT geopolitical events into `geopolitical_data`.
-- [x] Pull FRED macro series into `macroeconomic_data`.
+- [x] Scrape gold + silver prices (12 countries, 2017–today) and merge into `raw_prices`.
+- [x] Pull GDELT geopolitical events into `geopo_data`.
+- [x] Pull FRED macro series into `macro_data`.
 - [x] Pull `^VIX` and `CL=F` from Yahoo into `vix_oil_data`.
 - [x] Load `Reserves_Gold.xlsx` into `reserves_gold`.
-- [x] Populate `dim_date`.
 
 ### EDA (TODO — project_plan.md PHASE 2)
 - [ ] Visualize gold 24K price trend (USA, 2017 → today).

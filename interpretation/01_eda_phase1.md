@@ -14,7 +14,7 @@
 3. **Trois prédicteurs « tendanciels »** dominent la corrélation linéaire avec le prix : `gdp` (r = +0,82), `cpi` (+0,80), `gold_reserves` (+0,78). **Attention : il s'agit très probablement de corrélations de co-tendance** (chacun croît avec le temps), pas de causalité directe — la valeur prédictive sur les rendements reste à confirmer en Phase 3 (modèles + SHAP).
 4. **Les indicateurs géopolitiques** ont une corrélation linéaire **faible ou négative** avec le niveau de prix (-0,31 pour `total_events`, -0,27 pour `political_events`). Le test de l'effet « pic géopolitique → rendement +7 jours » montre une moyenne plus haute (+0,59 % vs +0,31 %), **mais le test de Mann-Whitney n'est pas significatif (p = 0,14)** sur 68 jours. À garder dans le modèle pour les effets non-linéaires (SHAP), mais sans surinterpréter.
 5. **Le profil de valeurs manquantes** est dominé par la nature même des sources (macro mensuelle, réserves annuelles, marchés en jours ouvrés). La stratégie d'imputation **forward-fill** déjà actée dans `refactor/02-data-understanding.md` est confirmée : les écarts journaliers maximaux sur l'or sont de **3 jours** (week-ends + jours fériés US), ce qui est parfaitement gérable par ffill.
-6. **Plusieurs anomalies de données** sont remontées pour la Phase 2 : doublons FRED, schémas de noms incohérents (`"Pays"`, `"Date"`, `"CPI"`/`"GDP"`/…), prix max anormalement haut (173,62 $/g vs spot attendu ~94 $/g). Ces points doivent être traités avant la construction de `ml.us_gold_features_daily`.
+6. **Plusieurs anomalies de données** sont remontées pour la Phase 2 : doublons FRED, incohérences de schéma (en partie résolues par le refactor — tables renommées ; restent les colonnes macro en casse mixte et `vix_oil_data` `"Date"`/`oil`), prix max anormalement haut (173,62 $/g vs spot attendu ~94 $/g). Ces points doivent être traités avant la construction de `ml.us_gold_features_daily`.
 
 ---
 
@@ -270,10 +270,10 @@ Détaillons les trois cas :
 
 | Source                  | Granularité native                      | Règle d'imputation                                |
 | ----------------------- | --------------------------------------- | ------------------------------------------------- |
-| `cleaned_prices` (gold) | Jours ouvrés                            | **Forward-fill** weekend / jours fériés (max 3 j) |
-| `macroeconomic_data`    | Mensuelle (et trimestrielle pour `gdp`) | **Forward-fill** vers le journalier               |
+| `raw_prices` (gold)     | Jours ouvrés                            | **Forward-fill** weekend / jours fériés (max 3 j) |
+| `macro_data`            | Mensuelle (et trimestrielle pour `gdp`) | **Forward-fill** vers le journalier               |
 | `vix_oil_data`          | Jours ouvrés                            | **Forward-fill** weekend / jours fériés           |
-| `geopolitical_data`     | Journalière dense                       | **Aucune imputation** nécessaire (0 % manquant)   |
+| `geopo_data`            | Journalière dense                       | **Aucune imputation** nécessaire (0 % manquant)   |
 | `reserves_gold`         | Annuelle                                | **Forward-fill** vers le journalier               |
 
 ### Verdict suggéré pour `SUMMARY.md` § Missing values
@@ -286,21 +286,23 @@ Détaillons les trois cas :
 
 Ce que l'EDA a fait remonter et qui doit être traité **avant** la construction de `ml.us_gold_features_daily` :
 
-1. **Doublons FRED** : la table `"Macroeconomic_data"` contient chaque ligne **deux fois** (2 463 doublons exacts sur 4 926 lignes). Le notebook EDA dédoublonne en mémoire, mais la Phase 2 doit nettoyer au niveau base (suppression ou recréation depuis FRED).
+> **Note :** le pipeline a été refactoré après cette EDA — tables renommées et or + argent fusionnés dans `raw_prices`. Les points ci-dessous sont annotés *(résolu)* ou *(à faire)* en conséquence.
+
+1. **Doublons FRED** : la table macro `"Macroeconomic_data"` (renommée `macro_data`) contenait chaque ligne **deux fois** (2 463 doublons exacts sur 4 926 lignes). Le notebook EDA dédoublonne en mémoire, mais la Phase 2 doit nettoyer au niveau base (suppression ou recréation depuis FRED).
 2. **Outlier prix** : 173,62 $/g (max) est implausible vs spot international. Ajouter une borne supérieure ou winsorization au feature-build.
-3. **Schéma incohérent** :
-   - Table `cleaned_data` (au lieu de `cleaned_prices` du DDL — bug d'insertion documenté dans CLAUDE.md).
-   - Colonne `"Pays"` (slug français) à standardiser en `country_code` ISO3 (`etats-unis` → `USA`).
-   - Colonne `"Année"` (accent) à normaliser.
-   - Colonne `date` en `TEXT` → à convertir en `DATE`.
-   - Colonne `devise` à `NULL` pour `etats-unis` (la Phase 2 doit la remplir à `USD` lors du build).
+3. **Schéma (mis à jour par le refactor)** :
+   - Table de prix renommée `cleaned_data` → **`raw_prices`** (or + argent fusionnés) *(résolu)*.
+   - `"Pays"` → **`country`** *(résolu)* — toujours un slug français ; standardisation ISO3 `country_code` restante (`etats-unis` → `USA`).
+   - Colonne `"Année"` supprimée *(résolu)*.
+   - Colonne `date` désormais en `timestamp` → **à convertir en `DATE`** *(en cours)*.
+   - Colonne `devise` désormais **renseignée** (`etats-unis` → `USD`) *(résolu)*.
 4. **Lignes prix à `gold_24k = 0`** : aucune n'a été détectée dans la sortie EDA (`After dropping date OOB / zero-price rows: 2,428 (dropped 0)`), mais l'EDA garde le contrôle défensif. Maintenir en Phase 2.
-5. **Table `gdelt_data`** (au lieu de `geopolitical_data` du DDL — autre bug d'insertion).
-6. **Table `"Macroeconomic_data"`** (quotée, mixed case) et ses colonnes `"CPI"`, `"GDP"`, `"DXY"`, `"Unemployment"` à uniformiser en minuscules.
-7. **Table `vix_oil_data`** : colonne `"Date"` (quotée, D majuscule) → `date` ; colonne `oil` (au lieu de `oil_price` du DDL).
-8. **`dim_date`** : pas de colonnes `day_of_week` ni `is_month_end` — à dériver en Phase 2 lors du feature-build (`pd.to_datetime(date).dt.dayofweek`, `.dt.is_month_end`).
+5. **Table géo** renommée `gdelt_data` → **`geopo_data`** *(résolu)*.
+6. **Table macro** renommée `"Macroeconomic_data"` → **`macro_data`** *(résolu)* ; ses colonnes `"CPI"`, `"GDP"`, `"DXY"`, `"Unemployment"` restent en casse mixte → à passer en minuscules *(à faire)*.
+7. **Table `vix_oil_data`** : colonne `"Date"` (D majuscule) → `date` ; colonne `oil` → `oil_price` *(à faire)*.
+8. **`dim_date` supprimée** *(résolu)* : les features calendaires (`month`, `quarter`, `day_of_week`, `is_month_end`) sont dérivées en pandas au feature-build (`pd.to_datetime(date).dt.month/.quarter/.dayofweek`, `.dt.is_month_end`).
 9. **Question ouverte — calendrier de trading** : NYSE business days (~252 j/an) ou tous les jours calendaires forward-fillés (365 j/an) ? Décision à prendre **avant** de calculer `y_lag_*`, `y_ma_*`, `y_vol_30` (la sémantique de `y_lag_1` change : « hier ouvré » ou « hier calendaire »).
-10. **Vérification de l'unité de `gdp`** : 98,94 % de missingness suggère une cadence **trimestrielle**, pas mensuelle comme le reste du macro. À vérifier dans `Collector/fredAPI.py` (la série FRED `GDP` est trimestrielle au format quarterly).
+10. **Vérification de l'unité de `gdp`** : 98,94 % de missingness suggère une cadence **trimestrielle**, pas mensuelle comme le reste du macro. À vérifier dans `data_collection/fredAPI.py` (la série FRED `GDP` est trimestrielle au format quarterly).
 
 ---
 

@@ -19,7 +19,7 @@ Predict daily USA gold 24K prices (in USD) by combining historical prices, macro
 
 The following are explicitly excluded from the modeling pipeline:
 
-- Other karats: `gold_22k`, `gold_21k`, `gold_18k`, `gold_14k`, `gold_10k`.
+- Other karats: `gold_22k`, `gold_18k`, `gold_14k`, `gold_10k` (`gold_21k` was dropped at source).
 - `silver_price`.
 - All countries other than USA. Other-country rows stay in source tables but are filtered out at feature-build time (Phase 3); do not delete them.
 

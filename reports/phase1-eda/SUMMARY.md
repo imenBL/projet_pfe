@@ -7,8 +7,13 @@
 ## Scope
 
 - Target: `gold_24k` for USA, in USD per gram.
+<<<<<<< Updated upstream
 - Period analyzed: **2017-01-02 → 2026-04-24** (2 428 trading days).
 - Other karats (`gold_22k`, `gold_18k`, `gold_14k`, `gold_10k`) and `silver_price` excluded per `project_plan.md`.
+=======
+- Period analyzed: **2017-01-01 → today**.
+- Other karats (`gold_22k`, `gold_18k`, `gold_14k`, `gold_10k`) and `silver_price` excluded per `project_plan.md` (`gold_21k` was dropped at source).
+>>>>>>> Stashed changes
 
 ## Trend (Task 1)
 
@@ -88,6 +93,7 @@ Seasonality exists but does not justify prioritising SARIMA over plain ARIMA on 
 
 ## Missing-value strategy (Task 6) — locked
 
+<<<<<<< Updated upstream
 | Source            | Native grain                       | Imputation rule (Phase 2)                                     |
 |-------------------|------------------------------------|---------------------------------------------------------------|
 | `raw_prices`      | Daily (trading days only)          | **Forward-fill** weekend / holiday gaps (max gap = 3 days)    |
@@ -102,6 +108,15 @@ Seasonality exists but does not justify prioritising SARIMA over plain ARIMA on 
 - Macro features (FRED): 97–99% missing on a daily calendar — expected given monthly/quarterly publication cadence.
 - Market features (Yahoo): ~31% missing — expected (~252 trading days / 365 calendar days ≈ 69% coverage).
 - `gold_reserves` (World Bank): 14% missing — one value per year forward-filled over 365 days.
+=======
+| Source                 | Native grain | Imputation rule (Phase 2)                                  |
+|------------------------|--------------|-------------------------------------------------------------|
+| `raw_prices`           | Daily (gaps) | **Forward-fill** weekend / holiday gaps                     |
+| `macro_data`           | Monthly      | **Forward-fill** month → daily                              |
+| `vix_oil_data`         | Daily (gaps) | **Forward-fill** weekend / holiday gaps                     |
+| `geopo_data`           | Daily        | Dense for USA; ffill any sporadic gaps if found             |
+| `reserves_gold`        | Annual       | **Forward-fill** year → daily                               |
+>>>>>>> Stashed changes
 
 These rules carry forward as the contract for Phase 2 feature-build.
 
@@ -114,6 +129,7 @@ Per `project_plan.md`, all 14 `ALL_EXOG_FEATURES` carry forward regardless of ED
 - **Geopolitical (GDELT, USA):** `total_events`, `political_events`, `war_intensity`, `crisis_index`, `political_pressure`
 - **Reserves (World Bank, USA):** `gold_reserves`
 
+<<<<<<< Updated upstream
 Calendar features (`month`, `quarter`, `day_of_week`, `is_month_end`) are **derived in pandas from the `date` column** at feature-build time (Phase 2) — `dim_date` has been removed from the pipeline.
 
 ## Phase 2 hand-off — column-name and data-quality findings
@@ -133,6 +149,30 @@ Surfaced by EDA; fixes belong to Phase 2 per `refactor/03-data-preparation.md`:
 11. **Open question — trading-day calendar:** NYSE business days (~252/year) vs. every calendar day forward-filled (365/year)? Affects row count and the semantics of `y_lag_1`. **Must be locked before computing lag/MA/vol features in Phase 2.**
 
 > **Implementation status:** items 4 and 8 (TIMESTAMP → DATE conversion) and item 2 (ISO3 standardisation) are Phase 2 tasks. The live DB still holds TIMESTAMP types for `raw_prices`, `macro_data`, and `vix_oil_data`. `reserves_gold` does not yet have a `date` column (Phase 2 addition). These are documented as pending — not yet applied to the DB or code.
+=======
+Plus calendar features **derived in pandas** from the `date` column: `month`, `quarter`, `day_of_week`, `is_month_end` (the `dim_date` table was removed).
+
+## Phase 2 hand-off — column-name and data-quality findings
+
+> **Note:** the pipeline was refactored after this EDA ran — tables were renamed and gold + silver merged into `raw_prices`, so several items below are now **resolved**. The EDA itself ran against the previous table names (`cleaned_data`, `gdelt_data`, `"Macroeconomic_data"`).
+
+**Resolved by the refactor:**
+
+1. Price table renamed `cleaned_data` → **`raw_prices`** (gold + silver merged; gold karats + `silver_price`).
+2. `"Pays"` → **`country`** (still a French slug — ISO3 standardization remains, below); the accented `"Année"` column is gone.
+3. `devise` is now **populated** per country (`etats-unis` → `USD`), no longer NULL.
+4. Geo table `gdelt_data` → **`geopo_data`**; macro table `"Macroeconomic_data"` → **`macro_data`**.
+5. `dim_date` removed — calendar features are derived in pandas.
+
+**Still open for Phase 2 (Data Preparation), per `refactor/03-data-preparation.md`:**
+
+6. Standardize `raw_prices.country` to ISO3 `country_code` (`etats-unis` → `USA`, `tunisie` → `TUN`, …).
+7. Convert date columns `timestamp` → `DATE` on `raw_prices` / `macro_data` / `vix_oil_data` (**in progress**); add a `date` column to `reserves_gold`.
+8. `macro_data` columns are still mixed-case (`"CPI"`, `"GDP"`, `"DXY"`, `"Unemployment"`) → lowercase; `vix_oil_data` still uses `"Date"` + `oil` → `date` + `oil_price`.
+9. `raw_prices.gold_24k` contains some **0-valued rows** that were filtered out in EDA; add a non-zero / sanity-bound constraint at feature-build time.
+10. FRED macro rows were **duplicated** at EDA time (each row twice); verify `macro_data` is de-duplicated at the DB level before the join.
+11. **Open question — trading-day calendar:** NYSE business days, or every calendar day forward-filled? Affects row count and the meaning of `y_lag_1`. Lock this **before** computing lag/MA/vol features in Phase 2.
+>>>>>>> Stashed changes
 
 ---
 
