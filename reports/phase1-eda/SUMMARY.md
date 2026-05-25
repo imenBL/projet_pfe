@@ -1,26 +1,35 @@
 # Phase 1 — EDA Summary (USA / gold 24K / USD / 2017 → today)
 
-> **Status:** ✅ DONE — all verdicts filled from `interpretation/01_eda_phase1.md` outputs.
-> For visuals, run `notebooks/01_eda_phase1.ipynb`.
+> **Status:** ✅ DONE — verdicts filled and verified against `notebooks/01_eda_phase1_copieeee.ipynb` live outputs.
+> For visuals, run `notebooks/01_eda_phase1_copieeee.ipynb`.
 > Maps to: `refactor/02-data-understanding.md`, `project_plan.md` PHASE 1.
 
 ## Scope
 
-- Target: `gold_24k` for USA, in USD per gram.
-<<<<<<< Updated upstream
-- Period analyzed: **2017-01-02 → 2026-04-24** (2 428 trading days).
-- Other karats (`gold_22k`, `gold_18k`, `gold_14k`, `gold_10k`) and `silver_price` excluded per `project_plan.md`.
-=======
-- Period analyzed: **2017-01-01 → today**.
+- Target: `gold_24k` for USA, filtered by `devise = 'USD'` from `raw_prices`.
+- Period analyzed: **2017-01-02 → 2026-05-22** (2 448 trading days after dedup).
 - Other karats (`gold_22k`, `gold_18k`, `gold_14k`, `gold_10k`) and `silver_price` excluded per `project_plan.md` (`gold_21k` was dropped at source).
 
 ## Trend (Task 1)
 
-The `gold_24k` USA series follows a strong upward trajectory over the study period, multiplied by approximately **4.1×** (from **36.98 $/g** to **151.43 $/g**). Three successive regimes are clearly identifiable:
+The `gold_24k` USA series follows a strong upward trajectory over the study period, multiplied by approximately **4.1×** (from **36.98 $/g** in Jan 2017 to **151.43 $/g** as of the last recorded price). Three successive regimes are clearly identifiable:
 
 1. **2017–2019 — low consolidation phase** (~37–45 $/g): narrow range, gradual Fed rate hikes.
 2. **2020–2022 — COVID shock + inflationary surge**: first upward breakout to 55–65 $/g, noticeably higher volatility.
 3. **2022–2026 — bull super-cycle**: gold successively breaks 70, 90, then 130+ $/g, consistent with the international spot dynamics (all-time high late 2024).
+
+**Key statistics (from notebook cell output):**
+
+| Stat   | Value       |
+|--------|-------------|
+| Count  | 2 448 rows  |
+| Mean   | 64.91 $/g   |
+| Std    | 28.25 $/g   |
+| Min    | 36.98 $/g   |
+| 25%    | 43.13 $/g   |
+| Median | 58.15 $/g   |
+| 75%    | 65.46 $/g   |
+| Max    | 173.62 $/g  |
 
 **Outlier flagged:** the series maximum of **173.62 $/g** is implausible vs. the expected international spot (~90–95 $/g peak). Likely a one-off scraping error (decimal shift or unit mix). **Action for Phase 2:** add an upper-bound control or winsorization at the 99.5th percentile before building `ml.us_gold_features_daily`.
 
@@ -88,18 +97,17 @@ Seasonality exists but does not justify prioritising SARIMA over plain ARIMA on 
 - Absolute difference: +0.28 pp (~90% relative uplift)
 - Mann-Whitney U one-sided p-value: **p = 0.1418** (U = 120 857)
 
-**Verdict:** The directional signal is consistent with gold's safe-haven role, but **statistically non-significant** at the 5% threshold (p = 0.14, n = 68 spike days). The low power stems from the small spike count and high return variance — not necessarily from the absence of an effect. Geopolitical features are **retained** in the feature table; their predictive contribution will be arbitrated by SHAP in Phase 3. Tree-based models may capture conditional effects (e.g., spike in calm vs. stressed market regime) that the linear Mann-Whitney test cannot detect.
+**Verdict:** The directional signal is consistent with gold’s safe-haven role, but **statistically non-significant** at the 5% threshold (p = 0.14, n = 68 spike days). The low power stems from the small spike count and high return variance — not necessarily from the absence of an effect. Geopolitical features are **retained** in the feature table; their predictive contribution will be arbitrated by SHAP in Phase 3. Tree-based models may capture conditional effects (e.g., spike in calm vs. stressed market regime) that the linear Mann-Whitney test cannot detect.
 
 ## Missing-value strategy (Task 6) — locked
 
-<<<<<<< Updated upstream
-| Source            | Native grain                       | Imputation rule (Phase 2)                                     |
-|-------------------|------------------------------------|---------------------------------------------------------------|
-| `raw_prices`      | Daily (trading days only)          | **Forward-fill** weekend / holiday gaps (max gap = 3 days)    |
-| `macro_data`      | Monthly (quarterly for `gdp`)      | **Forward-fill** month/quarter → daily                        |
-| `vix_oil_data`    | Daily (trading days only)          | **Forward-fill** weekend / holiday gaps                       |
-| `geopo_data`      | Daily (complete, 0% missing)       | **No imputation needed** — GDELT coverage is fully dense      |
-| `reserves_gold`   | Annual                             | **Forward-fill** year → daily                                 |
+| Source          | Native grain                       | Row count (notebook)       | Imputation rule (Phase 2)                                  |
+|-----------------|------------------------------------|----------------------------|------------------------------------------------------------||
+| `raw_prices`    | Daily (trading days only)          | 2 448 (2017-01-02→2026-05-22) | **Forward-fill** weekend / holiday gaps (max gap = 3 days) |
+| `macro_data`    | Monthly (quarterly for `gdp`)      | 2 741 (2016-01-01→2026-05-15) | **Forward-fill** month/quarter → daily                    |
+| `vix_oil_data`  | Daily (trading days only)          | 2 615 (2016-01-04→2026-05-25) | **Forward-fill** weekend / holiday gaps                    |
+| `geopo_data`    | Daily (complete, 0% missing)       | 3 797 (2016-01-01→2026-05-24) | **No imputation needed** — GDELT coverage is fully dense  |
+| `reserves_gold` | Annual                             | 15 rows (2010→2024)         | **Forward-fill** year → daily                              |
 
 **Supporting numbers from EDA:**
 - `gold_24k` max consecutive gap: **3 days** (weekend + US holiday) — safe for forward-fill.
@@ -107,14 +115,6 @@ Seasonality exists but does not justify prioritising SARIMA over plain ARIMA on 
 - Macro features (FRED): 97–99% missing on a daily calendar — expected given monthly/quarterly publication cadence.
 - Market features (Yahoo): ~31% missing — expected (~252 trading days / 365 calendar days ≈ 69% coverage).
 - `gold_reserves` (World Bank): 14% missing — one value per year forward-filled over 365 days.
-=======
-| Source                 | Native grain | Imputation rule (Phase 2)                                  |
-|------------------------|--------------|-------------------------------------------------------------|
-| `raw_prices`           | Daily (gaps) | **Forward-fill** weekend / holiday gaps                     |
-| `macro_data`           | Monthly      | **Forward-fill** month → daily                              |
-| `vix_oil_data`         | Daily (gaps) | **Forward-fill** weekend / holiday gaps                     |
-| `geopo_data`           | Daily        | Dense for USA; ffill any sporadic gaps if found             |
-| `reserves_gold`        | Annual       | **Forward-fill** year → daily                               |
 
 These rules carry forward as the contract for Phase 2 feature-build.
 
@@ -127,53 +127,26 @@ Per `project_plan.md`, all 14 `ALL_EXOG_FEATURES` carry forward regardless of ED
 - **Geopolitical (GDELT, USA):** `total_events`, `political_events`, `war_intensity`, `crisis_index`, `political_pressure`
 - **Reserves (World Bank, USA):** `gold_reserves`
 
-<<<<<<< Updated upstream
 Calendar features (`month`, `quarter`, `day_of_week`, `is_month_end`) are **derived in pandas from the `date` column** at feature-build time (Phase 2) — `dim_date` has been removed from the pipeline.
 
 ## Phase 2 hand-off — column-name and data-quality findings
 
 Surfaced by EDA; fixes belong to Phase 2 per `refactor/03-data-preparation.md`:
 
-1. **Table renames (live DB vs. docs):** `cleaned_data` → `raw_prices`, `gdelt_data` → `geopo_data`, `Macroeconomic_data` → `macro_data` — now aligned in all docs.
-2. `raw_prices.country` is currently **`"Pays"`** (French slug, mixed case requires quoting). Standardise to ISO3 `country_code` (`etats-unis` → `USA`, `tunisie` → `TUN`, etc.).
-3. `raw_prices."Année"` (accented) — normalise column name.
-4. `raw_prices.date` is **TIMESTAMP** in the live DB → target type is **DATE**; conversion pending (tracked as Phase 2 task).
-5. `raw_prices.devise` is **NULL for `etats-unis`** — non-blocker for Stage 1 (USA-only) but must be filled to `USD` at feature-build time.
-6. `raw_prices.gold_24k` had **no zero-valued rows** in the EDA window (dropped 0 rows). Maintain the non-zero sanity check at feature-build time as a defensive guard.
-7. **`macro_data` (formerly `"Macroeconomic_data"`):** mixed-case columns `"CPI"`, `"GDP"`, `"DXY"`, `"Unemployment"` — rename to lowercase at feature-build time. Also contains **2 463 exact duplicate rows** (each FRED row appears twice) — deduplicate before feature-build.
-8. `vix_oil_data."Date"` (quoted, capital D) → `date`; column `oil` → `oil_price`. Live DB still uses TIMESTAMP → target DATE (conversion pending).
-9. **`macro_data.gdp`** is **98.94% missing** on the daily calendar — confirms FRED `GDP` series is **quarterly**, not monthly. Verify in `data_collection/fredAPI.py`.
-10. **Calendar features:** `dim_date` has been removed. `day_of_week` and `is_month_end` are derived in pandas from the `date` column during Phase 2 feature-build.
-11. **Open question — trading-day calendar:** NYSE business days (~252/year) vs. every calendar day forward-filled (365/year)? Affects row count and the semantics of `y_lag_1`. **Must be locked before computing lag/MA/vol features in Phase 2.**
+1. **Table renames (resolved by refactor):** `cleaned_data` → `raw_prices`, `gdelt_data` → `geopo_data`, `Macroeconomic_data` → `macro_data` — now aligned in all docs.
+2. `raw_prices.country` is currently a **French slug** (e.g. `etats-unis`). Standardise to ISO3 `country_code` (`etats-unis` → `USA`, `tunisie` → `TUN`, etc.).
+3. `raw_prices.date` is **TIMESTAMP** in the live DB → target type is **DATE**; conversion in progress (Phase 2 task).
+4. `raw_prices.gold_24k` had **no zero-valued rows** in the EDA window (dropped 0 rows). Maintain the non-zero sanity check at feature-build time as a defensive guard.
+5. **`macro_data`:** mixed-case columns `"CPI"`, `"GDP"`, `"DXY"`, `"Unemployment"` — rename to lowercase at feature-build time. Also contained **duplicate rows** at EDA time (each FRED row appeared twice); deduplicate before feature-build. The notebook deduped in-memory by `drop_duplicates(subset='date')`.
+6. `vix_oil_data` live columns: `"Date"` (quoted, capital D) → `date`; `oil` → `oil_price`. Live DB still uses TIMESTAMP → target DATE (conversion pending).
+7. **`macro_data.gdp`** is **98.94% missing** on the daily calendar — confirms FRED `GDP` series is **quarterly**, not monthly. Verify in `data_collection/fredAPI.py`.
+8. **Calendar features:** `dim_date` has been removed. `day_of_week` and `is_month_end` are derived in pandas from the `date` column during Phase 2 feature-build.
+9. **Open question — trading-day calendar:** NYSE business days (~252/year) vs. every calendar day forward-filled (365/year)? Affects row count and the semantics of `y_lag_1`. **Must be locked before computing lag/MA/vol features in Phase 2.**
 
-> **Implementation status:** items 4 and 8 (TIMESTAMP → DATE conversion) and item 2 (ISO3 standardisation) are Phase 2 tasks. The live DB still holds TIMESTAMP types for `raw_prices`, `macro_data`, and `vix_oil_data`. `reserves_gold` does not yet have a `date` column (Phase 2 addition). These are documented as pending — not yet applied to the DB or code.
-=======
-Plus calendar features **derived in pandas** from the `date` column: `month`, `quarter`, `day_of_week`, `is_month_end` (the `dim_date` table was removed).
-
-## Phase 2 hand-off — column-name and data-quality findings
-
-> **Note:** the pipeline was refactored after this EDA ran — tables were renamed and gold + silver merged into `raw_prices`, so several items below are now **resolved**. The EDA itself ran against the previous table names (`cleaned_data`, `gdelt_data`, `"Macroeconomic_data"`).
-
-**Resolved by the refactor:**
-
-1. Price table renamed `cleaned_data` → **`raw_prices`** (gold + silver merged; gold karats + `silver_price`).
-2. `"Pays"` → **`country`** (still a French slug — ISO3 standardization remains, below); the accented `"Année"` column is gone.
-3. `devise` is now **populated** per country (`etats-unis` → `USD`), no longer NULL.
-4. Geo table `gdelt_data` → **`geopo_data`**; macro table `"Macroeconomic_data"` → **`macro_data`**.
-5. `dim_date` removed — calendar features are derived in pandas.
-
-**Still open for Phase 2 (Data Preparation), per `refactor/03-data-preparation.md`:**
-
-6. Standardize `raw_prices.country` to ISO3 `country_code` (`etats-unis` → `USA`, `tunisie` → `TUN`, …).
-7. Convert date columns `timestamp` → `DATE` on `raw_prices` / `macro_data` / `vix_oil_data` (**in progress**); add a `date` column to `reserves_gold`.
-8. `macro_data` columns are still mixed-case (`"CPI"`, `"GDP"`, `"DXY"`, `"Unemployment"`) → lowercase; `vix_oil_data` still uses `"Date"` + `oil` → `date` + `oil_price`.
-9. `raw_prices.gold_24k` contains some **0-valued rows** that were filtered out in EDA; add a non-zero / sanity-bound constraint at feature-build time.
-10. FRED macro rows were **duplicated** at EDA time (each row twice); verify `macro_data` is de-duplicated at the DB level before the join.
-11. **Open question — trading-day calendar:** NYSE business days, or every calendar day forward-filled? Affects row count and the meaning of `y_lag_1`. Lock this **before** computing lag/MA/vol features in Phase 2.
-
+> **Implementation status:** item 3 (TIMESTAMP → DATE conversion) is in progress for `raw_prices`, `macro_data`, and `vix_oil_data`. `reserves_gold` does not yet have a `date` column (Phase 2 addition). Item 2 (ISO3 standardisation) is a Phase 2 task. These are documented as pending — not yet fully applied to the DB or code.
 
 ---
 
 _Phase 1 EDA is complete. To close Phase 1 formally:_
 _1. Tick the 3 acceptance-criteria boxes in `refactor/02-data-understanding.md` and flip its Status to **DONE**._
-_2. Phase 2 (`refactor/03-data-preparation.md`) is then unblocked — starting with the 11 data-quality items listed above._
+_2. Phase 2 (`refactor/03-data-preparation.md`) is then unblocked — starting with the data-quality items listed above._
