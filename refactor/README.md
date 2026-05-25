@@ -13,8 +13,8 @@ CRISP-DM order is **canonical and non-negotiable** for this project. Data Unders
 | CRISP-DM phase            | project_plan.md scope                                       | Status                       |
 |---------------------------|--------------------------------------------------------------|------------------------------|
 | 1. Business Understanding | "Project Description" + "Project Goals"                     | DONE                         |
-| 2. Data Understanding     | Phase 0 (Data Infrastructure) + Phase 1 (EDA)               | Collection DONE, EDA **TODO — next up** |
-| 3. Data Preparation       | Phase 2 (cleanup + build `ml.us_gold_features_daily`)       | **TODO — gated on EDA**      |
+| 2. Data Understanding     | Phase 0 (Data Infrastructure) + Phase 1 (EDA)               | **DONE** (Collection + EDA)  |
+| 3. Data Preparation       | Phase 2 (cleanup + build `ml.us_gold_features_daily`)       | **TODO — next up**           |
 | 4. Modeling               | Phase 3 (ARIMA → XGBoost/LightGBM → LSTM → TFT)             | TODO                         |
 | 5. Evaluation             | Phase 3 metrics + SHAP + Phase 4 model-comparison table     | TODO                         |
 | 6. Deployment             | Phase 4 (PFE report + optional REST API / dashboard)        | TODO                         |

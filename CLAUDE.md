@@ -57,28 +57,19 @@ Constants: `LAG_WINDOWS = [1, 7, 30]`, `MA_WINDOWS = [7, 30]`, `VOL_WINDOW = 30`
 
 ## Phase status (CRISP-DM ordering, from project_plan.md)
 
-CRISP-DM order is **canonical and non-negotiable** for this project: Data Understanding (EDA) must complete before Data Preparation begins. The user has explicitly directed: *"no pragmatic shortcuts."* Do **not** start the feature-table build, schema fixes, or ISO3 standardization before the EDA report exists and Phase 1 acceptance criteria are met.
+CRISP-DM order is **canonical and non-negotiable** for this project: Data Understanding (EDA) must complete before Data Preparation begins. The user has explicitly directed: *"no pragmatic shortcuts."* Do **not** start the feature-table build, schema fixes, or ISO3 standardization before the EDA report exists and Phase 1 acceptance criteria are met. **Phase 1 is now complete (gate satisfied)**, so Phase 2 may proceed.
 
 | Phase | Scope                                          | Status |
 |-------|------------------------------------------------|--------|
 | 0     | Data infrastructure (scrapers, APIs, DB setup) | **DONE** |
-| 1     | EDA (trend viz, correlation, ADF/KPSS, STL, geopolitical-spike analysis, missing-value strategy) | **TODO — next up** |
-| 2     | Data prep + feature engineering → `ml.us_gold_features_daily` | **TODO — gated on Phase 1** |
+| 1     | EDA (trend viz, correlation, ADF/KPSS, STL, geopolitical-spike analysis, missing-value strategy) | **DONE** |
+| 2     | Data prep + feature engineering → `ml.us_gold_features_daily` | **TODO — next up** |
 | 3     | Modeling (ARIMA → XGBoost/LightGBM → LSTM → TFT, SHAP, best-model selection) | TODO |
 | 4     | Results & reporting (model-comparison table, predicted-vs-actual plots, SHAP plots, PFE report, optional REST API / dashboard) | TODO |
 
-When asked "what's next", the answer is **Phase 1 — EDA**. The verbatim checklist from `project_plan.md`:
+When asked "what's next", the answer is **Phase 2 — Data Preparation**. Phase 1 (EDA) is **complete** — all 6 EDA tasks done and verified; verdicts live in `reports/phase1-eda/SUMMARY.md` and the full contract in `refactor/02-data-understanding.md`. The Phase-2 checklist (build `ml.us_gold_features_daily`) lives in `refactor/03-data-preparation.md`.
 
-1. Gold 24K price trend visualization (USA, 2017 → today).
-2. Correlation matrix: `gold_24k` vs all exogenous features.
-3. Stationarity tests: ADF / KPSS on the `gold_24k` series.
-4. Trend + seasonality decomposition (STL).
-5. Geopolitical event spikes vs gold-price movements.
-6. Missing-values analysis and imputation strategy.
-
-See `refactor/02-data-understanding.md` for the full Phase-1 contract (inputs, tasks, outputs, acceptance criteria).
-
-**Phase 2 (Data Preparation) is gated on Phase 1.** Only once the EDA report exists and Phase-1 acceptance criteria are met, Phase 2 builds `ml.us_gold_features_daily` per the checklist in `refactor/03-data-preparation.md` (drop non-24K karats and silver, ISO3 country codes, `timestamp → DATE`, join + forward-fill, compute lags / MAs / volatility, derive calendar features in pandas). Do not pre-start the feature-table build in parallel with Phase 1. (The `timestamp → DATE` column conversion has already been started as a standalone schema fix.)
+**Phase 1 is complete; Phase 2 (Data Preparation) is unblocked.** Phase 2 builds `ml.us_gold_features_daily` per the checklist in `refactor/03-data-preparation.md` (drop non-24K karats and silver, ISO3 country codes, `timestamp → DATE`, join + forward-fill, compute lags / MAs / volatility, derive calendar features in pandas). (The `timestamp → DATE` column conversion has already been started as a standalone schema fix.)
 
 ## Running the pipeline
 

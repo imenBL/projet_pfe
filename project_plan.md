@@ -163,23 +163,23 @@ PROJECT PLAN — PHASES & MILESTONES
     └─────────────────────────────────────────────────────────────────────────┘
 
     ┌─────────────────────────────────────────────────────────────────────────┐
-    │  PHASE 1 — Exploratory Data Analysis (EDA)              [ TODO — NEXT ]│
+    │  PHASE 1 — Exploratory Data Analysis (EDA)                     [ DONE ]│
     │                                                                         │
-    │  [ ] Gold 24K price trend visualization (USA, 2017–today)               │
-    │  [ ] Correlation matrix : gold_24k vs all exogenous features            │
-    │  [ ] Stationarity tests : ADF / KPSS on gold_24k series                 │
-    │  [ ] Trend + seasonality decomposition (STL)                            │
-    │  [ ] Geopolitical event spikes vs gold price movements                  │
-    │  [ ] Missing values analysis and imputation strategy                    │
+    │  [x] Gold 24K price trend visualization (USA, 2017–today)               │
+    │  [x] Correlation matrix : gold_24k vs all exogenous features            │
+    │  [x] Stationarity tests : ADF / KPSS on gold_24k series                 │
+    │  [x] Trend + seasonality decomposition (STL)                            │
+    │  [x] Geopolitical event spikes vs gold price movements                  │
+    │  [x] Missing values analysis and imputation strategy                    │
     │                                                                         │
     │  Gate: Phase 1 acceptance criteria (see refactor/02-data-               │
     │  understanding.md) must be met before Phase 2 starts.                   │
     └─────────────────────────────────────────────────────────────────────────┘
 
     ┌─────────────────────────────────────────────────────────────────────────┐
-    │  PHASE 2 — Data Preparation & Feature Engineering  [ TODO — GATED ]    │
-    │  Gated on PHASE 1 completion. Do not start until the EDA report and    │
-    │  imputation strategy are produced.                                      │
+    │  PHASE 2 — Data Preparation & Feature Engineering  [ TODO — NEXT ]     │
+    │  Phase 1 complete — gate passed. EDA report + imputation strategy       │
+    │  produced (reports/phase1-eda/SUMMARY.md).                              │
     │                                                                         │
     │  [ ] Keep only gold_24k — drop other karats and silver_price            │
     │  [ ] Standardize country_code (ISO3) across all tables                  │
