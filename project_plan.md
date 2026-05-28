@@ -177,14 +177,15 @@ PROJECT PLAN — PHASES & MILESTONES
     └─────────────────────────────────────────────────────────────────────────┘
 
     ┌─────────────────────────────────────────────────────────────────────────┐
-    │  PHASE 2 — Data Preparation & Feature Engineering  [ TODO — NEXT ]     │
-    │  Phase 1 complete — gate passed. EDA report + imputation strategy       │
-    │  produced (reports/phase1-eda/SUMMARY.md).                              │
+    │  PHASE 2 — Data Preparation & Feature Engineering        [ DONE ]      │
+    │  ml.us_gold_features_daily built (2 448 x 27) and verified.             │
+    │  Code: USA_cleaning.py + data_access.py.                                │
+    │  Summary: reports/phase2-dataprep/SUMMARY.md.                           │
     │                                                                         │
-    │  [ ] Keep only gold_24k — drop other karats and silver_price            │
-    │  [ ] Standardize country_code (ISO3) across all tables                  │
-    │  [ ] Fix date types (timestamp → DATE) in raw_prices                    │
-    │  [ ] Build ml.us_gold_features_daily :                                  │
+    │  [x] Keep only gold_24k — dropped other karats and silver_price         │
+    │  [~] country_code ISO3 — emitted 'USA' in table; sources not rewritten  │
+    │  [~] Date types/renames — applied in-pandas at build; source ALTER def. │
+    │  [x] Build ml.us_gold_features_daily :                                  │
     │        - Filter : country_code = 'USA' (gold_24k)                       │
     │        - Join   : macro_data (forward-fill monthly → daily)             │
     │        - Join   : vix_oil_data (daily)                                  │
@@ -197,16 +198,16 @@ PROJECT PLAN — PHASES & MILESTONES
     └─────────────────────────────────────────────────────────────────────────┘
 
     ┌─────────────────────────────────────────────────────────────────────────┐
-    │  PHASE 3 — Modeling                                             [ TODO ]│
+    │  PHASE 3 — Modeling                                    [ IN PROGRESS ]│
     │                                                                         │
-    │  [ ] Chronological train / validation / test split (70 / 15 / 15 %)    │
-    │  [ ] Baseline         : ARIMA / SARIMA (univariate)                     │
-    │  [ ] ML model         : XGBoost / LightGBM (full feature set)           │
-    │  [ ] Deep Learning    : LSTM                                             │
-    │  [ ] Advanced DL      : Temporal Fusion Transformer (TFT)               │
-    │  [ ] Evaluation       : MAE, RMSE, MAPE, R²                            │
-    │  [ ] Interpretability : SHAP feature importance                         │
-    │  [ ] Best model selection                                               │
+    │  [x] Chronological train / validation / test split (70 / 15 / 15 %)    │
+    │  [x] Baseline         : ARIMA (univariate; AIC → (0,1,0))               │
+    │  [x] ML models        : LinReg, Tree, XGBoost, LightGBM, Prophet        │
+    │  [x] Deep Learning    : LSTM (PyTorch)                                  │
+    │  [ ] Advanced DL      : Temporal Fusion Transformer (TFT) (deferred)     │
+    │  [x] Evaluation       : MAE, RMSE, MAPE, R² (+ skill vs RW)            │
+    │  [x] Interpretability : SHAP (earlier .py iteration)                    │
+    │  [~] Best model selection (LSTM ≈ random walk)                          │
     └─────────────────────────────────────────────────────────────────────────┘
 
     ┌─────────────────────────────────────────────────────────────────────────┐

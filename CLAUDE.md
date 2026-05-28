@@ -57,19 +57,19 @@ Constants: `LAG_WINDOWS = [1, 7, 30]`, `MA_WINDOWS = [7, 30]`, `VOL_WINDOW = 30`
 
 ## Phase status (CRISP-DM ordering, from project_plan.md)
 
-CRISP-DM order is **canonical and non-negotiable** for this project: Data Understanding (EDA) must complete before Data Preparation begins. The user has explicitly directed: *"no pragmatic shortcuts."* Do **not** start the feature-table build, schema fixes, or ISO3 standardization before the EDA report exists and Phase 1 acceptance criteria are met. **Phase 1 is now complete (gate satisfied)**, so Phase 2 may proceed.
+CRISP-DM order is **canonical and non-negotiable** for this project: Data Understanding (EDA) must complete before Data Preparation begins. The user has explicitly directed: *"no pragmatic shortcuts."* Do **not** start the feature-table build, schema fixes, or ISO3 standardization before the EDA report exists and Phase 1 acceptance criteria are met. **Phases 1 and 2 are now complete (gates satisfied)**, so Phase 3 (Modeling) may proceed.
 
 | Phase | Scope                                          | Status |
 |-------|------------------------------------------------|--------|
 | 0     | Data infrastructure (scrapers, APIs, DB setup) | **DONE** |
 | 1     | EDA (trend viz, correlation, ADF/KPSS, STL, geopolitical-spike analysis, missing-value strategy) | **DONE** |
-| 2     | Data prep + feature engineering → `ml.us_gold_features_daily` | **TODO — next up** |
-| 3     | Modeling (ARIMA → XGBoost/LightGBM → LSTM → TFT, SHAP, best-model selection) | TODO |
+| 2     | Data prep + feature engineering → `ml.us_gold_features_daily` | **DONE** |
+| 3     | Modeling (ARIMA → XGBoost/LightGBM → LSTM → TFT, SHAP, best-model selection) | **IN PROGRESS** (notebooks in `models/`: ARIMA, LinReg, DecisionTree, XGBoost, LightGBM, Prophet, LSTM done; TFT deferred) |
 | 4     | Results & reporting (model-comparison table, predicted-vs-actual plots, SHAP plots, PFE report, optional REST API / dashboard) | TODO |
 
-When asked "what's next", the answer is **Phase 2 — Data Preparation**. Phase 1 (EDA) is **complete** — all 6 EDA tasks done and verified; verdicts live in `reports/phase1-eda/SUMMARY.md` and the full contract in `refactor/02-data-understanding.md`. The Phase-2 checklist (build `ml.us_gold_features_daily`) lives in `refactor/03-data-preparation.md`.
+When asked "what's next", the answer is **Phase 4 — Results & reporting (the PFE write-up)**, plus optionally the deferred TFT. Phases 1–2 are complete; Phase 3 modeling + its interpretation are done — the expert read-through is `interpretation/03_modeling.md` (French, mirrors `interpretation/01_eda_phase1.md`), with results in `reports/phase3-modeling/SUMMARY.md` and the model-comparison in `reports/phase3-modeling/comparison_table.md`. Key conclusion to carry into the report: **daily gold is ~a random walk at h=1**; the lever for real skill is a **longer horizon + change/surprise features**, not a more complex model.
 
-**Phase 1 is complete; Phase 2 (Data Preparation) is unblocked.** Phase 2 builds `ml.us_gold_features_daily` per the checklist in `refactor/03-data-preparation.md` (drop non-24K karats and silver, ISO3 country codes, `timestamp → DATE`, join + forward-fill, compute lags / MAs / volatility, derive calendar features in pandas). (The `timestamp → DATE` column conversion has already been started as a standalone schema fix.)
+**Phase 3 (Modeling) — delivered as academic notebooks in `models/`.** Six notebooks, run in order (`01_preprocessing` → `02_arima` → `03_simple_model` → `04_modele_d_ensemble` → `05_LSTM` → `06_comparison`), all sharing **`models/utils.py`** (one load + chronological 70/15/15 split + price-scale metrics) and writing aligned test predictions to `models/predictions/<name>.csv`. Execute headlessly with `.\projet\Scripts\python.exe -m jupyter nbconvert --to notebook --execute --inplace models\<nb>.ipynb`. Locked decisions: **t+1, return-based** forecasting (predict next-day log-return, reconstruct price; metrics on the $/g scale — leakage-safe, avoids the tree extrapolation trap); univariate ARIMA; `SEED = 42`; LSTM in **PyTorch** (TensorFlow has no Python-3.14 build). Result: daily gold is **near a random walk** at h=1 — ARIMA = (0,1,0); the LSTM is nominally best but tied with the random walk; tuned trees/LinReg/Prophet do worse. **Deferred:** TFT. The old `modeling/` `.py` package was retired in favour of the notebooks. `data_access.load_features()` reads `ml.us_gold_features_daily`.
 
 ## Running the pipeline
 

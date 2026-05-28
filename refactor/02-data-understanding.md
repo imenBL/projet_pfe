@@ -56,7 +56,7 @@ Centralized tables hold all countries; **filtering to USA happens at the feature
 
 ## Open questions (resolved)
 - ~~Does GDELT have any USA-day gaps inside 2017→today that would require imputation?~~ **Resolved:** No. GDELT USA coverage is fully dense (3 797 daily rows, 2016-01-01→2026-05-24, 0% missing across all 5 columns) — no imputation needed.
-- **Carried to Phase 2 (open):** trading-day calendar — NYSE business days (~252/yr) vs every calendar day forward-filled (365/yr). Must be locked before computing `y_lag_*` / `y_ma_*` / `y_vol_30`.
+- ~~**Carried to Phase 2 (open):** trading-day calendar — NYSE business days (~252/yr) vs every calendar day forward-filled (365/yr).~~ **Resolved in Phase 2:** NYSE trading days (grid = observed USA price dates). See `refactor/03-data-preparation.md` § Decisions locked.
 
 ## EDA artifacts
 - Notebook: [`notebooks/01_eda_phase1_copieeee.ipynb`](../notebooks/01_eda_phase1_copieeee.ipynb) — visuals stay inline; run manually.

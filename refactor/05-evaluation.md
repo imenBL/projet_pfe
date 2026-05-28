@@ -1,6 +1,6 @@
 # Phase 5 — Evaluation
 
-> Status: TODO
+> Status: **IN PROGRESS** — all implemented models (ARIMA, LinearRegression, DecisionTree, XGBoost, LightGBM, Prophet, LSTM) scored on one holdout with identical metrics in `06_comparison.ipynb`; best model named (LSTM, ≈ random walk). TFT scoring pending; SHAP carried over from the earlier `.py` iteration. See [`reports/phase3-modeling/SUMMARY.md`](../reports/phase3-modeling/SUMMARY.md).
 > Maps to project_plan.md: PHASE 3 (Evaluation + Interpretability) + PHASE 4 (Model comparison table)
 
 ## Goal
@@ -21,11 +21,11 @@ Score every model on the same holdout test set, surface feature importance for t
 `EVAL_METRICS = ["MAE", "RMSE", "MAPE", "R2"]`. All four must be reported for every model.
 
 ## Tasks
-- [ ] Compute MAE / RMSE / MAPE / R² for every model on the test set.
-- [ ] Build the model-comparison table (one row per model, columns = the 4 metrics).
-- [ ] For each model, plot predicted vs actual `gold_24k` over the test window.
-- [ ] Compute SHAP feature importance for the winning ML/DL model. SHAP is required for at least the best XGBoost/LightGBM model, and (if feasible) for TFT.
-- [ ] Pick a single final model and write a short justification (~1 paragraph: why this one over the runners-up).
+- [x] Compute MAE / RMSE / MAPE / R² for every model on the test set. — `models/utils.py:evaluate`; all 7 models + RandomWalk reference (+ skill-vs-RW & directional accuracy).
+- [x] Build the model-comparison table (one row per model, columns = the metrics). — `06_comparison.ipynb` → `reports/phase3-modeling/comparison_table.{md,csv}`.
+- [x] Plot predicted vs actual `gold_24k` over the test window. — inline per notebook + `best_model_pred_vs_actual.png`.
+- [~] SHAP feature importance for the winning ML model. — produced in the earlier `.py` iteration (LightGBM: `dxy`, `y_ma_7`, `y_ma_30`, `fed_rate`, `y_lag_1`); not regenerated in the notebooks (nominal best is the LSTM, where TreeExplainer doesn't apply).
+- [~] Pick a single final model and write a short justification. — **LSTM** by lowest test RMSE, but **statistically tied with the random walk** (see SUMMARY); final cross-lineup pick pending TFT.
 
 ## Outputs (for Phase 6)
 - Model-comparison table (CSV or markdown).

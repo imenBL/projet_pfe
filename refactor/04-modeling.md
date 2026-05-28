@@ -1,6 +1,6 @@
 # Phase 4 — Modeling
 
-> Status: TODO
+> Status: **IN PROGRESS** — delivered as academic notebooks in `models/`: ARIMA, LinearRegression, DecisionTree, XGBoost, LightGBM, Prophet and an LSTM (PyTorch) are trained, evaluated and compared. **TFT still deferred.** See [`reports/phase3-modeling/SUMMARY.md`](../reports/phase3-modeling/SUMMARY.md).
 > Maps to project_plan.md: PHASE 3 (Modeling)
 
 ## Goal
@@ -23,23 +23,24 @@ Train and compare forecasting models on `ml.us_gold_features_daily`, in order of
 3. **Deep learning — LSTM**.
 4. **Advanced DL — Temporal Fusion Transformer (TFT)**.
 
-Each model gets its own notebook or script (e.g., `models/arima.py`, `models/xgboost.py`, …). For each model, persist:
+Each model is its own notebook in `models/` (`02_arima.ipynb`, `03_simple_model.ipynb`, `04_modele_d_ensemble.ipynb`, `05_LSTM.ipynb`), all sharing `models/utils.py` (one load + split + metrics). For each model, persist:
 
-- The trained model artifact (pickle / joblib / state dict).
-- The full test-set prediction series, aligned to test-set dates, for Phase 5 evaluation.
-- Training log: loss curves and hyperparameters used.
+- The aligned test-set prediction series → `models/predictions/<name>.csv` (date, y_t, actual, pred).
+- Metrics + plots rendered inline; the cross-model comparison + best-model plot in `06_comparison.ipynb`.
 
 ## Reproducibility
-- Set a fixed random seed in every model script (numpy / torch / xgboost / lightgbm).
-- Pin dependency versions when modeling work begins. The repo currently has no `requirements.txt` — adding it is part of this phase.
+- Fixed `SEED = 42` (numpy / torch / xgboost / lightgbm); ARIMA is deterministic.
+- Dependency versions pinned in `requirements.txt` (incl. `torch 2.12.0`, `prophet 1.3.0`).
 
 ## Tasks
-- [ ] Implement a chronological 70/15/15 split utility used by every model.
-- [ ] ARIMA / SARIMA baseline trained, test-set predictions saved.
-- [ ] XGBoost / LightGBM trained, test-set predictions saved.
-- [ ] LSTM trained, test-set predictions saved.
-- [ ] TFT trained, test-set predictions saved.
-- [ ] Add `requirements.txt` (pinned versions) for the modeling stack.
+- [x] Chronological 70/15/15 split utility used by every model. — `models/utils.py:chrono_split`.
+- [x] ARIMA baseline trained, test-set predictions saved. — univariate, AIC-selected (0,1,0); walk-forward 1-step (`02_arima.ipynb`).
+- [x] Simple ML — LinearRegression + DecisionTree (GridSearchCV + TimeSeriesSplit) (`03_simple_model.ipynb`).
+- [x] XGBoost / LightGBM trained, test-set predictions saved (RandomizedSearch + TimeSeriesSplit) (`04_modele_d_ensemble.ipynb`).
+- [x] Prophet trained, 1-step walk-forward predictions saved (`04_modele_d_ensemble.ipynb`).
+- [x] LSTM trained, test-set predictions saved. — PyTorch, univariate on returns (`05_LSTM.ipynb`).
+- [ ] TFT trained, test-set predictions saved. — **deferred**.
+- [x] Add `requirements.txt` (pinned versions) for the modeling stack. — incl. torch, prophet, sklearn/xgboost/lightgbm.
 
 ## Outputs (for Phase 5)
 - Trained model artifact per model family.
@@ -47,11 +48,17 @@ Each model gets its own notebook or script (e.g., `models/arima.py`, `models/xgb
 - Training logs (loss curves, hyperparameters).
 
 ## Acceptance criteria (gate to Phase 5)
-- [ ] All 4 model families trained and produced test-set predictions.
-- [ ] Predictions aligned to the exact test-set dates (no leakage from train or validation).
-- [ ] Random seeds pinned and documented.
-- [ ] `requirements.txt` checked in.
+- [~] All model families trained and produced test-set predictions. — ARIMA, LinReg, DecisionTree, XGBoost, LightGBM, Prophet, LSTM done; **TFT deferred**.
+- [x] Predictions aligned to the exact test-set dates (no leakage). — all `models/predictions/*.csv` share the 363 test dates (2024-12-31 → 2026-05-21); t+1 return target; split disjoint.
+- [x] Random seeds pinned and documented. — `SEED = 42` (numpy/torch/xgboost/lightgbm); ARIMA deterministic.
+- [x] `requirements.txt` checked in. — pinned (torch, prophet, sklearn/xgboost/lightgbm, …).
 
-## Open questions
-- Forecast horizon: t+1 only, or multi-step (t+1, t+7, t+30)?
-- Baseline: pure univariate ARIMA, or SARIMAX with exogenous regressors?
+## Decisions locked (Phase 3)
+- **Delivery:** academic notebooks in `models/` + shared `models/utils.py` (replaced the earlier `.py` modeling package).
+- **Forecast horizon:** t+1 only (multi-step deferred). Target = next-day log-return, price reconstructed for scoring.
+- **Baseline:** pure **univariate ARIMA** (SARIMAX-with-exog out of scope per the "univariate baseline" rule).
+- **TFT** deferred (Python 3.14 + Windows DL-install risk). SHAP was produced in the earlier `.py` iteration; not part of the current notebook set (the nominal best model is the LSTM, where TreeExplainer does not apply).
+
+## Open questions (resolved)
+- ~~Forecast horizon: t+1 only, or multi-step?~~ **Resolved:** t+1 (multi-step is a future extension).
+- ~~Baseline: univariate ARIMA, or SARIMAX with exogenous regressors?~~ **Resolved:** univariate ARIMA.

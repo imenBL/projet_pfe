@@ -1,8 +1,8 @@
 # Phase 3 — Data Preparation
 
-> Status: **TODO — gated on Phase 2 (EDA).** Exception: the `timestamp → DATE` schema fix is already in progress; the feature-table build itself stays gated on EDA.
+> Status: **DONE** — `ml.us_gold_features_daily` built (2 448 × 27) and verified; see [`reports/phase2-dataprep/SUMMARY.md`](../reports/phase2-dataprep/SUMMARY.md).
 > Maps to project_plan.md: PHASE 2 (Data Preparation & Feature Engineering)
-> CRISP-DM rule: do not start any task below until Phase 2 (Data Understanding) reaches DONE — EDA report and imputation strategy must exist first. No pragmatic shortcuts.
+> CRISP-DM rule: Phase 2 (Data Understanding / EDA) reached DONE first — EDA report and imputation strategy exist. No pragmatic shortcuts were taken.
 
 ## Goal
 Produce `ml.us_gold_features_daily`: a Stage-1, model-ready table with one row per day (USA), target column `y = gold_24k` in USD, plus all engineered, exogenous, and calendar features.
@@ -15,21 +15,21 @@ Produce `ml.us_gold_features_daily`: a Stage-1, model-ready table with one row p
   - **Imputation strategy** per source (weekend/holiday gold gaps = forward-fill; decision recorded in `02-data-understanding.md` § Decisions).
 - Phase 2 acceptance criteria all ticked. Do not proceed otherwise.
 
-## Tasks (from project_plan.md PHASE 2)
+## Tasks (from project_plan.md PHASE 2) — DONE
 
-- [ ] Keep only `gold_24k` — exclude `gold_22k`, `gold_18k`, `gold_14k`, `gold_10k`, and `silver_price` from the modeling path. (`gold_21k` no longer exists; `silver_price` now lives in the same `raw_prices` table.)
-- [ ] Standardize `country_code` to ISO3 across all tables. Current French slugs in `raw_prices.country` (`etats-unis`, `tunisie`, `france`, …) must map to ISO3 codes (`USA`, `TUN`, `FRA`, …).
-- [~] **In progress** — Convert date column types from `timestamp` to `DATE` on `raw_prices`, `macro_data`, and `vix_oil_data` (the first Data-Preparation fix, already started). Also rename `macro_data` columns to lowercase (`CPI/GDP/DXY/Unemployment` → `cpi/gdp/dxy/unemployment`) and `vix_oil_data` `"Date"/oil` → `date/oil_price`.
-- [ ] Build `ml.us_gold_features_daily`:
-    - [ ] Filter: `country_code = 'USA'` (target = `gold_24k`; there is no `metals` column anymore).
-    - [ ] Join `macro_data` — forward-fill monthly → daily.
-    - [ ] Join `vix_oil_data` — daily.
-    - [ ] Join `geopo_data` — filter `country = 'USA'`, daily.
-    - [ ] Join `reserves_gold` — forward-fill annual → daily (use the new `date` column once added).
-    - [ ] Compute `y_lag_1`, `y_lag_7`, `y_lag_30`.
-    - [ ] Compute `y_ma_7`, `y_ma_30`.
-    - [ ] Compute `y_vol_30` (rolling std of log-returns).
-    - [ ] Derive calendar features in pandas (`month`, `quarter`, `day_of_week`, `is_month_end`) from the `date` column.
+- [x] Keep only `gold_24k` — other karats (`gold_22k/18k/14k/10k`) and `silver_price` dropped from the modeling path (`clean_prices` keeps `date` + `gold_24k`).
+- [~] Standardize `country_code` to ISO3 — **done at feature-build, not by mutating sources.** The output table carries `country_code = 'USA'`; `geopo_data`/`reserves_gold` are already ISO3; `raw_prices` is selected via `devise = 'USD'` and left untouched (per the CLAUDE.md hard-scope rule: filter at feature-build, do not rewrite source tables).
+- [~] Date types + column renames — **applied in-pandas at feature-build**, not as source `ALTER`s. The build parses `date` to datetime, coerces the text-typed macro columns to numeric and lowercases `CPI/GDP/DXY/Unemployment → cpi/gdp/dxy/unemployment`, and maps `vix_oil_data` `Date/oil → date/oil_price`. The persisted `ml.us_gold_features_daily.date` is type `DATE`. Source tables still store `timestamp`/mixed-case — the source-level migration was out of surgical scope and is deferred.
+- [x] Build `ml.us_gold_features_daily`:
+    - [x] Filter `country_code = 'USA'` (target = `gold_24k`).
+    - [x] Join `macro_data` — forward-filled monthly/quarterly → daily.
+    - [x] Join `vix_oil_data` — daily (holiday gaps forward-filled).
+    - [x] Join `geopo_data` — `country = 'USA'`, daily.
+    - [x] Join `reserves_gold` — annual → daily via a `year-01-01` date + forward-fill.
+    - [x] Compute `y_lag_1`, `y_lag_7`, `y_lag_30`.
+    - [x] Compute `y_ma_7`, `y_ma_30`.
+    - [x] Compute `y_vol_30` (rolling std of log-returns).
+    - [x] Derive calendar features in pandas (`month`, `quarter`, `day_of_week`, `is_month_end`) from the `date` column.
 
 ## Feature spec (authoritative — do not deviate)
 
@@ -63,15 +63,32 @@ Constants: `LAG_WINDOWS = [1, 7, 30]`, `MA_WINDOWS = [7, 30]`, `VOL_WINDOW = 30`
 - One row per day, USA only, `gold_24k` as target column `y`.
 - All engineered, exogenous, and calendar features present.
 
-## Acceptance criteria (gate to Phase 4)
-- [ ] Table `ml.us_gold_features_daily` exists in schema `ml`.
-- [ ] Row count equals the number of distinct dates in the USA price series within `[2017-01-01, today]` (per the trading-day convention chosen in Phase 2).
-- [ ] Target column `y` is non-null for every row (or the missing-day policy is documented and consistent).
-- [ ] No nulls in `y_lag_*`, `y_ma_*`, `y_vol_30` after the warm-up window (first 30 rows).
-- [ ] All 14 exogenous columns present and forward-filled per the rules above.
-- [ ] All 4 calendar columns present.
-- [ ] `country_code` standardized to ISO3 in every source table.
-- [ ] `raw_prices.date` is type `DATE` (converted from `timestamp`).
+## Acceptance criteria (gate to Phase 4) — verified 2026-05-26
+- [x] Table `ml.us_gold_features_daily` exists in schema `ml`.
+- [x] Row count = distinct USA price dates in `[2017-01-01, today]` → **2 448 rows** (2017-01-02 → 2026-05-22).
+- [x] Target column `y` non-null for every row (0 nulls).
+- [x] No nulls in `y_lag_*`, `y_ma_*`, `y_vol_30` after the warm-up window — nulls confined to rows 0–29.
+- [x] All 14 exogenous columns present and forward-filled (0 nulls after warm-up).
+- [x] All 4 calendar columns present.
+- [~] `country_code` ISO3 — emitted as `'USA'` in the feature table; source tables not rewritten (see Tasks note / hard-scope rule).
+- [~] `raw_prices.date` → `DATE` — the feature table's `date` is `DATE`; the source `raw_prices.date` remains `timestamp` (converted in-pandas at read; source `ALTER` deferred).
 
-## Open questions
-- Trading-day calendar: use NYSE business days, or every calendar day forward-filled? — decision affects row count and the meaning of `y_lag_1`. Lock this in Phase 2 EDA.
+## Decisions locked (Phase 2)
+- **Date window:** exogenous sources extracted from `2016-01-01` (forward-fill warm-up); the feature table starts at the first gold trading day (`>= 2017-01-01`, i.e. 2017-01-02). `DATE_END` = today (dynamic).
+- **Trading-day calendar:** **NYSE trading days** — the grid is the set of distinct dates observed in the USA gold series (they already encode NYSE holidays). `y_lag_1` therefore means *previous trading day*, and the row count equals the number of distinct USA price dates.
+- **Outliers:** the table is built on **raw `gold_24k`** (no capping) — see below.
+
+## Outlier handling (deferred)
+Phase 1 flagged the series max (173.62 $/g) as an implausible scraping error (real peak ~90–95 $/g). The table is built on the raw value for now; `USA_cleaning.cap_gold_outliers()` is provided but **off by default**. Candidate fixes to evaluate later this phase:
+- (a) winsorize `gold_24k` at the 99.5th percentile (the provided helper);
+- (b) IQR-based upper cap;
+- (c) log-space z-score flagging of point outliers;
+- (d) targeted correction of the specific 173.62 $/g decimal-shift row.
+
+## Artifacts
+- Build code: `USA_cleaning.py` (cleaning + feature build + write) and `data_access.py` (reusable cached DB readers), repo root.
+- Output table: `ml.us_gold_features_daily` in `metals_db`.
+- Summary: [`reports/phase2-dataprep/SUMMARY.md`](../reports/phase2-dataprep/SUMMARY.md).
+
+## Open questions (resolved)
+- ~~Trading-day calendar: NYSE business days vs every calendar day forward-filled?~~ **Resolved:** NYSE trading days (see Decisions locked).
