@@ -5,6 +5,8 @@
 > **Périmètre Stage 1 :** USA · `gold_24k` · USD · cible **t+1** (rendement log reconstruit en prix)
 > **Rôle de ce document :** lecture experte (Data Scientist) des sorties des notebooks de modélisation, en français, pour expliquer **pourquoi chaque modèle se comporte ainsi** et **comment choisir un modèle selon le comportement de la série**. Chiffres repris des notebooks exécutés ; tableau de référence : `reports/phase3-modeling/comparison_table.md`.
 
+> **Suite (itération T+30) :** ce document décrit le run **t+1**, conservé tel quel comme **baseline marche-aléatoire**. Donnant suite au point 6 du TL;DR, le projet passe à l'horizon **T+30** (~1 mois) et `gold_reserves` est retiré du jeu de features (co-tendance). Voir `notebooks/01_eda_phase1_copieeee.ipynb` (EDA ré-itérée) et `project_plan.md` (bloc NOTES). Les chiffres ci-dessous ne sont **pas** réécrits.
+
 ---
 
 ## Synthèse exécutive (TL;DR)

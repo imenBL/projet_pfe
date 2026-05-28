@@ -36,7 +36,7 @@ Centralized tables hold all countries; **filtering to USA happens at the feature
 
 ### EDA (DONE — project_plan.md PHASE 2)
 - [x] Visualize gold 24K price trend (USA, 2017 → today). — 2 448 rows, 2017-01-02→2026-05-22, 36.98→144.99 $/g (~3.9×).
-- [x] Correlation matrix: `gold_24k` vs every exogenous feature. — 14 features ranked (Pearson + Spearman); top-3 gdp/cpi/gold_reserves.
+- [x] Correlation matrix: `gold_24k` vs every exogenous feature. — 13 features ranked (Pearson + Spearman); top co-trend gdp/cpi. `gold_reserves` dropped (spurious co-trend, see re-iteration note).
 - [x] Stationarity tests on `gold_24k`: ADF and KPSS. — `log_returns` is stationary by both (target locked).
 - [x] STL decomposition: trend + seasonality + residual. — trend-dominated (σ 27.55 vs seasonal 3.45).
 - [x] Overlay geopolitical event spikes onto price moves. — 68 spike days; post-spike uplift non-significant (p = 0.15).
@@ -51,8 +51,16 @@ Centralized tables hold all countries; **filtering to USA happens at the feature
 - [x] Imputation strategy is documented per source (consistent with forward-fill rules in Phase 3). — forward-fill for all sources; GDELT needs none (0% missing).
 - [x] No surprises in coverage: every source has data spanning at least `2017-01-01 → today` for USA. — prices 2017-01-02→2026-05-22; exogenous sources span 2016→2026.
 
+## EDA re-iteration (T+30 pivot, no reserves)
+Triggered after Phase-3 (T+1) modeling showed every model tied to a random walk. The notebook `01_eda_phase1_copieeee.ipynb` was re-iterated with a light in-notebook cleaning block and an extended analysis; the persisted (main) cleaning is the **next step**.
+- **Import scope:** four source tables only — `raw_prices`, `geopo_data`, `macro_data`, `vix_oil_data`. `reserves_gold` is no longer loaded; `gold_reserves` is dropped from the Stage-1 feature set (spurious co-trend). Exogenous list is now **13** features.
+- **Cleaning block:** dates → datetime; the three exogenous tables filtered from **2014-01-01** (forward-fill warm-up); `usa_features` built from `raw_prices` (USD) keeping `gold_24k` only, raw values as-is (no per-day median dedup); numerical exogenous columns merged + forward-filled onto the gold trading-day grid, restricted to ≥ 2017.
+- **Added analyses:** explicit null / dtype / `describe` checks; ACF / PACF (autocorrelation); plus the existing trend, stationarity (ADF/KPSS), STL (trend/seasonality/residual), correlation (multivariate), and geopolitical-spike sections.
+- **Horizon:** re-framed **T+1 → T+30** (target-agnostic: level `y(t+30)` and 30-day cumulative log-return both shown). Target representation locked at the modeling step.
+
 ## Decisions (carry into Phase 3 — Data Preparation)
 - **Weekend / holiday gold-price gaps: forward-fill.** This decision propagates into the Phase 3 imputation strategy.
+- **`gold_reserves` dropped from the Stage-1 feature set.** Source table retained; `USA_cleaning.py` / `models/utils.py` / `ml.us_gold_features_daily` aligned in the main cleaning step.
 
 ## Open questions (resolved)
 - ~~Does GDELT have any USA-day gaps inside 2017→today that would require imputation?~~ **Resolved:** No. GDELT USA coverage is fully dense (3 797 daily rows, 2016-01-01→2026-05-24, 0% missing across all 5 columns) — no imputation needed.

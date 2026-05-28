@@ -4,6 +4,8 @@
 > For visuals, run `notebooks/01_eda_phase1_copieeee.ipynb`.
 > Maps to: `refactor/02-data-understanding.md`, `project_plan.md` PHASE 1.
 
+> **Update (T+30 iteration):** after Phase-3 found daily gold ≈ a random walk at h=1, the EDA was re-iterated. **`gold_reserves` is dropped** from the Stage-1 feature set (spurious co-trend — exactly the caveat in §Correlation), leaving **13** exogenous features; the forecast horizon moves **T+1 → T+30** (~1 month, target representation locked at the modeling step). This summary keeps the original analysis (with `gold_reserves`) as the rationale for the drop.
+
 ## Scope
 
 - Target: `gold_24k` for USA, filtered by `devise = 'USD'` from `raw_prices`.
@@ -84,7 +86,7 @@ Computed on the warm-up-trimmed clean window (3 339 daily rows, 2017-04-01 → 2
 | 14   | `unemployment`       | −0.02     | +0.19      | **Non-significant** linearly (Pearson p = 0.32)    |
 
 **Key observations:**
-- The top-3 correlations (`gdp`, `cpi`, `gold_reserves`) reflect **co-trending**, not direct causality. Their predictive value on returns remains to be confirmed in Phase 3.
+- The top-3 correlations (`gdp`, `cpi`, `gold_reserves`) reflect **co-trending**, not direct causality. Their predictive value on returns remains to be confirmed in modeling. → **`gold_reserves` has since been dropped** from the feature set for exactly this reason (see the T+30 update banner).
 - `dxy`, `fed_rate`, `real_rate` are **positively** correlated with gold — counter-intuitive versus classical theory, but explained by the 2022–2026 period where Fed tightening and gold prices rose simultaneously.
 - The Pearson vs. Spearman gap for `oil_price` (+0.22 vs +0.38), `vix` (+0.07 vs +0.24) and `unemployment` (−0.02 vs +0.19) signals **non-linear relationships** that tree-based models (XGBoost, LightGBM) will capture better than linear models.
 

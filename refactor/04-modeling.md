@@ -55,10 +55,15 @@ Each model is its own notebook in `models/` (`02_arima.ipynb`, `03_simple_model.
 
 ## Decisions locked (Phase 3)
 - **Delivery:** academic notebooks in `models/` + shared `models/utils.py` (replaced the earlier `.py` modeling package).
-- **Forecast horizon:** t+1 only (multi-step deferred). Target = next-day log-return, price reconstructed for scoring.
+- **Forecast horizon:** pivoting **t+1 → T+30** (~one month). The t+1 run above stands as the **baseline that motivated the pivot** (every model tied to a random walk). The T+30 target representation (price level `y(t+30)` vs cumulative log-return) is **not yet locked** — decided when this step is re-run.
 - **Baseline:** pure **univariate ARIMA** (SARIMAX-with-exog out of scope per the "univariate baseline" rule).
 - **TFT** deferred (Python 3.14 + Windows DL-install risk). SHAP was produced in the earlier `.py` iteration; not part of the current notebook set (the nominal best model is the LSTM, where TreeExplainer does not apply).
 
-## Open questions (resolved)
-- ~~Forecast horizon: t+1 only, or multi-step?~~ **Resolved:** t+1 (multi-step is a future extension).
+## Pending at this phase (T+30 re-run — next step)
+- **Align `models/utils.py`** to T+30 (target + horizon) and drop `gold_reserves` from `FEATURE_COLUMNS`; rebuild `ml.us_gold_features_daily` without `gold_reserves`.
+- **Lock the T+30 target representation** (level vs cumulative return) and the change/surprise feature set.
+- **Review `models_medium/`** (experimental T+30/T+60: level target, RW-with-drift, Diebold-Mariano, conformal intervals) — adopt, rebuild, or remove.
+
+## Open questions
+- ~~Forecast horizon: t+1 only, or multi-step?~~ **Reopened:** pivoting to **T+30**; t+1 retained only as the random-walk baseline.
 - ~~Baseline: univariate ARIMA, or SARIMAX with exogenous regressors?~~ **Resolved:** univariate ARIMA.

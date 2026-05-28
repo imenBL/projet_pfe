@@ -18,8 +18,6 @@ Summary:
         - Geopolitical signals     : Total Events, Political Events,
           War Intensity, Crisis Index, Political Pressure
           (GDELT, daily, filtered on USA)
-        - Gold Reserves            : USA annual gold reserves (World Bank,
-          annual → forward-filled to daily)
         - Time-series features     : Lags, Moving Averages, Rolling Volatility
           (engineered from the gold price series itself)
 
@@ -29,6 +27,9 @@ Summary:
         - Karat     : 24K only (gold_24k) — all other karats excluded
         - Currency  : USD
         - Period    : 2017-01-01 → Today
+        - Horizon   : T+30 (forecast ~one month / 30 trading days ahead).
+                      The earlier T+1 framing collapsed to a random walk;
+                      see PHASE 3 and the NOTES block below.
           
  Note : 
  Two prediction stages are defined: (Now we will Only Focus on Stage 1)
@@ -55,6 +56,10 @@ DATA SOURCES
         - Columns gold_22k, gold_18k, gold_14k, gold_10k and silver_price
           are excluded from the modeling pipeline. (gold_21k was dropped
           at source; gold and silver now share the raw_prices table.)
+        - gold_reserves (World Bank) is excluded from the Stage-1 feature set
+          (flagged as a spurious co-trend feature in EDA). The reserves_gold
+          source table is retained (other stages); it is simply not joined
+          into the feature set.
         - dim_date was removed; calendar features are derived in pandas.
 
 ================================================================================
@@ -114,8 +119,7 @@ FEATURE ENGINEERING — DEFINITIONS
         Geopolitical : total_events, political_events, war_intensity,
                        crisis_index, political_pressure
                        (daily, USA)
-        Reserves     : gold_reserves
-                       (annual, forward-filled to daily)
+        (gold_reserves was dropped — see the Note under DATA SOURCES.)
 
     ─── Calendar Features ───────────────────────────────────────────────────
         month, quarter, day_of_week, is_month_end
@@ -190,7 +194,6 @@ PROJECT PLAN — PHASES & MILESTONES
     │        - Join   : macro_data (forward-fill monthly → daily)             │
     │        - Join   : vix_oil_data (daily)                                  │
     │        - Join   : geopo_data (country = 'USA', daily)                   │
-    │        - Join   : reserves_gold (forward-fill annual → daily)           │
     │        - Compute: y_lag_1, y_lag_7, y_lag_30                           │
     │        - Compute: y_ma_7, y_ma_30                                       │
     │        - Compute: y_vol_30 (rolling std of log-returns)                 │
@@ -221,6 +224,32 @@ PROJECT PLAN — PHASES & MILESTONES
     └─────────────────────────────────────────────────────────────────────────┘
 
 ================================================================================
+NOTES — T+30 iteration (EDA re-iteration)
+================================================================================
+
+    Why T+30:
+        Phase-3 modeling at T+1 found every model statistically tied to a random
+        walk (ARIMA → (0,1,0); best skill vs RW ≈ +0.3 %, within noise). The EDA
+        was re-iterated to re-frame the problem at T+30 (~one month) where slow
+        macro/market/geo features have more room to carry signal. The exact target
+        representation (price level y(t+30) vs cumulative log-return ln(y(t+30)/y(t)))
+        is intentionally left open and locked at the modeling step.
+
+    gold_reserves dropped — code alignment pending:
+        gold_reserves is removed from the Stage-1 feature contract above. The EDA
+        notebook and these specs/docs reflect that now. The persisted code still
+        carries it and is aligned in the NEXT (main cleaning) step:
+        USA_cleaning.py (RESERVE_FEATURE / clean_reserves / the join), models/utils.py
+        (FEATURE_COLUMNS), and the built table ml.us_gold_features_daily (rebuild).
+
+    models_medium/ (experimental, not part of the workflow):
+        A models_medium/ directory exists (utils_h.py + models_h.py) implementing a
+        T+30/T+60 study with a direct price-level target, random-walk-with-drift
+        benchmark, Diebold-Mariano test and conformal intervals. It has no notebooks
+        or report and is not wired into the CRISP-DM workflow. Left untouched here;
+        review (and likely remove or rebuild) when the T+30 modeling step is reached.
+
+================================================================================
 PROJECT CONFIGURATION — Constants
 ================================================================================
 """
@@ -235,6 +264,12 @@ DATE_END          = "Current_date"               # Today (dynamic)
 # ─── Country ──────────────────────────────────────────────────────────────────
 COUNTRY           = "USA"
 
+# ─── Forecast Horizon ─────────────────────────────────────────────────────────
+FORECAST_HORIZON  = 30                 # Trading days ahead (T+30, ~one month).
+                                       # Target representation (price level y(t+30)
+                                       # vs cumulative log-return) is locked at the
+                                       # modeling step — see the NOTES block above.
+
 # ─── Feature Windows ─────────────────────────────────────────────────────────
 LAG_WINDOWS       = [1, 7, 30]         # Days
 MA_WINDOWS        = [7, 30]            # Days
@@ -245,9 +280,8 @@ MACRO_FEATURES    = ["fed_rate", "real_rate", "cpi", "gdp", "dxy", "unemployment
 MARKET_FEATURES   = ["vix", "oil_price"]
 GEO_FEATURES      = ["total_events", "political_events", "war_intensity",
                       "crisis_index", "political_pressure"]
-RESERVE_FEATURE   = ["gold_reserves"]
-
-ALL_EXOG_FEATURES = MACRO_FEATURES + MARKET_FEATURES + GEO_FEATURES + RESERVE_FEATURE
+# gold_reserves dropped from the Stage-1 feature set (spurious co-trend in EDA).
+ALL_EXOG_FEATURES = MACRO_FEATURES + MARKET_FEATURES + GEO_FEATURES
 
 # ─── Calendar Features ────────────────────────────────────────────────────────
 CALENDAR_FEATURES = ["month", "quarter", "day_of_week", "is_month_end"]
